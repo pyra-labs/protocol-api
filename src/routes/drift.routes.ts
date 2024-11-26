@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { Routes } from "../interfaces/routes.interface";
-import { DriftController } from "../controllers/drift.controller";
+import { Routes } from "../interfaces/routes.interface.js";
+import { DriftController } from "../controllers/drift.controller.js";
 
 export class DriftRoute implements Routes {
     public path = "/drift";

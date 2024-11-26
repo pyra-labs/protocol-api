@@ -1,7 +1,7 @@
 import { Writable } from "stream";
 import winston, { createLogger, Logger, transports } from "winston";
 import nodemailer from "nodemailer";
-import config from "../config/config";
+import config from "../config/config.js";
 
 export class AppLogger {
     protected logger: Logger;

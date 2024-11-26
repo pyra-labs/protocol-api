@@ -1,11 +1,11 @@
 import { calculateBorrowRate, calculateDepositRate, DriftClient, Wallet } from "@drift-labs/sdk";
 import { Connection, Keypair } from "@solana/web3.js";
-import config from "../config/config";
+import config from "../config/config.js";
 import { NextFunction, Request, Response } from "express";
-import { bnToDecimal, getQuartzHealth, retryRPCWithBackoff } from "../utils/helpers";
-import { DriftUser } from "../models/driftUser";
+import { bnToDecimal, getQuartzHealth, retryRPCWithBackoff } from "../utils/helpers.js";
+import { DriftUser } from "../models/driftUser.js";
 import { PublicKey } from "@solana/web3.js";
-import { HttpException } from "../utils/errors";
+import { HttpException } from "../utils/errors.js";
 
 export class DriftController {
     private connection: Connection;

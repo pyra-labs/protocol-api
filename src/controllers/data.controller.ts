@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { HttpException } from "../utils/errors";
+import { HttpException } from "../utils/errors.js";
 
 export class DataController {
     private priceCache: Record<string, { price: number; timestamp: number }> = {};

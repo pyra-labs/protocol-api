@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { Routes } from "../interfaces/routes.interface";
-import { DataController } from "../controllers/data.controller";
+import { Routes } from "../interfaces/routes.interface.js";
+import { DataController } from "../controllers/data.controller.js";
 
 export class DataRoute implements Routes {
     public path = "/data";

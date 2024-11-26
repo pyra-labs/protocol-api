@@ -1,11 +1,11 @@
 import express from "express";
-import config from "./config/config";
+import config from "./config/config.js";
 import cors from "cors";
 import hpp from "hpp";
-import { AppLogger } from "./utils/logger";
+import { AppLogger } from "./utils/logger.js";
 import helmet from "helmet";
-import { ErrorMiddleware, HttpException } from "./utils/errors";
-import { Routes } from "./interfaces/routes.interface";
+import { ErrorMiddleware, HttpException } from "./utils/errors.js";
+import { Routes } from "./interfaces/routes.interface.js";
 
 export class App extends AppLogger {
     public app: express.Application;
