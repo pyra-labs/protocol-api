@@ -16,9 +16,7 @@ export class DriftController {
     constructor() {
         this.connection = new Connection(config.RPC_URL);
 
-        const keypair = Keypair.fromSecretKey(config.DRIFT_KEYPAIR);
-        const wallet = new Wallet(keypair);
-        
+        const wallet = new Wallet(Keypair.generate());
         this.driftClient = new DriftClient({
             connection: this.connection,
             wallet: wallet,
