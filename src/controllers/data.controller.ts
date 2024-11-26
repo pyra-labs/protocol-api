@@ -6,7 +6,16 @@ export class DataController {
         
         try {
             const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+
+            if (!response.ok) {
+                return next(new Error("Failed to fetch data from CoinGecko"));
+            }
+
             const data = await response.json();
+
+            if (Object.keys(data).length === 0) {
+                return next(new Error("Invalid ID"));
+            }
 
             const pricesUsd = Object.keys(data).reduce((acc, id) => {
                 acc[id] = data[id].usd;

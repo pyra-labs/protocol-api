@@ -8,12 +8,41 @@ describe("Test /data", () => {
     it("Should return the price", async () => {
         const queryString = QueryString.stringify({
             ids: ["solana"],
-        });
+        },  {arrayFormat: "comma"});
         const response = await fetch(`${baseUrl}/price?${queryString}`);
         const body = await response.json();
 
         expect(response.status).toBe(200);
         expect(body).toHaveProperty("solana");
         expect(typeof body.solana).toBe("number");
+    });
+
+    it("Should return multiple prices", async () => {
+        const queryString = QueryString.stringify({
+            ids: ["solana", "bitcoin"],
+        }, {arrayFormat: "comma"});
+        const response = await fetch(`${baseUrl}/price?${queryString}`);
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toHaveProperty("solana");
+        expect(typeof body.solana).toBe("number");
+        expect(body).toHaveProperty("bitcoin");
+        expect(typeof body.bitcoin).toBe("number");
+    });
+
+    it("Should return an error if the ID is invalid", async () => {
+        const queryString = QueryString.stringify({
+            ids: ["notAnIdSoShouldFail"],
+        }, {arrayFormat: "comma"});
+        const response = await fetch(`${baseUrl}/price?${queryString}`);
+
+        expect(response.status).toBe(500);
+    });
+
+    it("Should return an error if the ID is missing", async () => {
+        const response = await fetch(`${baseUrl}/price`);
+
+        expect(response.status).toBe(500);
     });
 })

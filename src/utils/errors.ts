@@ -14,14 +14,18 @@ export class HttpException extends Error {
 
 
 export class ErrorMiddleware {
-    constructor(private logger: Logger) {}
+    constructor(private logger: Logger) {
+        this.handle = this.handle.bind(this);
+    }
 
-    handle(error: HttpException, req: Request, res: Response, next: NextFunction) {
+    handle(error: Error | HttpException, req: Request, res: Response, next: NextFunction) {
         try {
-            const status: number = error.status || 500;
-            this.logger.error(`[${req.method}] ${req.path} >> StatusCode:: ${status}, Message:: ${error.message}`);
+            const status: number = error instanceof HttpException ? error.status : 500;
+            const message: string = error.message || 'Something went wrong';
+            
+            this.logger.error(`[${req.method}] ${req.path} >> StatusCode:: ${status}, Message:: ${message}`);
 
-            res.status(status).json({ message: error.message });
+            res.status(status).json({ message });
         } catch (error) {
             next(error);
         }
