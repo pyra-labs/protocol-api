@@ -49,7 +49,8 @@ export class DriftController {
             throw new HttpException(400, "Market indices are required");
         }
 
-        const marketIndices = marketIndicesParam.split(',').map(Number).filter(n => !isNaN(n));
+        const decodedMarketIndices = decodeURIComponent(marketIndicesParam);
+        const marketIndices = decodedMarketIndices.split(',').map(Number).filter(n => !isNaN(n));
         if (marketIndices.length === 0) {
             throw new HttpException(400, "Invalid market indices");
         }
@@ -90,8 +91,8 @@ export class DriftController {
             const address = this.validateAddress(req.query.address as string);
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
-            const driftUser = await this.getUser(address).catch(() => {
-                throw new HttpException(400, "Invalid address");
+            const driftUser = await this.getUser(address).catch((error) => {
+                throw new HttpException(400, `User not found: ${error}`);
             });
 
             const balances = await Promise.all(marketIndices.map(async (index) => {
@@ -111,8 +112,8 @@ export class DriftController {
             const address = this.validateAddress(req.query.address as string);
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
-            const driftUser = await this.getUser(address).catch(() => {
-                throw new HttpException(400, "Invalid address");
+            const driftUser = await this.getUser(address).catch((error) => {
+                throw new HttpException(400, `User not found: ${error}`);
             });
 
             const withdrawLimits = await Promise.all(marketIndices.map(async (index) => {
@@ -131,8 +132,8 @@ export class DriftController {
         try {
             const address = this.validateAddress(req.query.address as string);
 
-            const driftUser = await this.getUser(address).catch(() => {
-                throw new HttpException(400, "Invalid address");
+            const driftUser = await this.getUser(address).catch((error) => {
+                throw new HttpException(400, `User not found: ${error}`);
             });
 
             const driftHealth = driftUser.getHealth();

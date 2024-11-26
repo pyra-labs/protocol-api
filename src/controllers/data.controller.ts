@@ -9,7 +9,8 @@ export class DataController {
         const ids = req.query.ids as string;
 
         if (!ids) return next(new HttpException(400, "ID is required"));
-        const idArray = ids.split(",");
+        const decodedIds = decodeURIComponent(ids);
+        const idArray = decodedIds.split(",");
         
         try {
             const now = Date.now();
