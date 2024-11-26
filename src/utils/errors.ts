@@ -22,11 +22,14 @@ export class ErrorMiddleware {
         try {
             const status: number = error instanceof HttpException ? error.status : 500;
             const message: string = error.message || 'Something went wrong';
+            
+            const queryString = Object.keys(req.query).length ? `?${new URLSearchParams(req.query as Record<string, string>).toString()}` : '';
+            const fullPath = `${req.path}${queryString}`;
 
             if (status >= 500) {
-                this.logger.error(`[${req.method}] ${req.path} >> StatusCode:: ${status}, Message:: ${message}`);
+                this.logger.error(`[${req.method}] ${fullPath} >> StatusCode:: ${status}, Message:: ${message}`);
             } else {
-                this.logger.warn(`[${req.method}] ${req.path} >> StatusCode:: ${status}, Message:: ${message}`);
+                this.logger.warn(`[${req.method}] ${fullPath} >> StatusCode:: ${status}, Message:: ${message}`);
             }
 
             res.status(status).json({ message });

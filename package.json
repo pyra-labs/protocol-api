@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "start": "tsc -p tsconfig.json && node build/index.js",
-    "test": "vitest run --pool=forks"
+    "test": "vitest run --pool=forks",
+    "test:data": "vitest run --pool=forks src/test/data.test.ts",
+    "test:drift": "vitest run --pool=forks src/test/drift.test.ts"
   },
   "keywords": [],
   "author": "",

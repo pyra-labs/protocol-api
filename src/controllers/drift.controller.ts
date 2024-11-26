@@ -5,6 +5,7 @@ import { NextFunction, Request, Response } from "express";
 import { bnToDecimal, getQuartzHealth, retryRPCWithBackoff } from "../utils/helpers";
 import { DriftUser } from "../models/driftUser";
 import { PublicKey } from "@solana/web3.js";
+import { HttpException } from "../utils/errors";
 
 export class DriftController {
     private connection: Connection;
@@ -36,40 +37,67 @@ export class DriftController {
         return driftUser;
     }
 
+    private validateAddress(address: string) {
+        try {
+            new PublicKey(address);
+            return address;
+        } catch (error) {
+            throw new HttpException(400, "Invalid address");
+        }
+    }
+
+    private validateMarketIndices(marketIndicesParam: string) {
+        if (!marketIndicesParam) {
+            throw new HttpException(400, "Market indices are required");
+        }
+
+        const marketIndices = marketIndicesParam.split(',').map(Number).filter(n => !isNaN(n));
+        if (marketIndices.length === 0) {
+            throw new HttpException(400, "Invalid market indices");
+        }
+
+        return marketIndices;
+    }
+
     public getRate = async (req: Request, res: Response, next: NextFunction) => {
         await this.initPromise;
 
-        const marketIndicesParam = req.query.marketIndices as string;
-        const marketIndices = marketIndicesParam.split(',').map(Number).filter(n => !isNaN(n));
+        try {
+            const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
-        const promises = marketIndices.map(async (index) => {
-            const spotMarket = await this.driftClient.getSpotMarketAccount(index);
-            if (!spotMarket) return next(new Error(`Could not find spot market for index ${index}`));
-        
-            const depositRateBN = calculateDepositRate(spotMarket);
-            const borrowRateBN = calculateBorrowRate(spotMarket);
-        
-            return {
-                depositRate: bnToDecimal(depositRateBN, 6),
-                borrowRate: bnToDecimal(borrowRateBN, 6)
-            };
-        });
+            const promises = marketIndices.map(async (index) => {
+                const spotMarket = await this.driftClient.getSpotMarketAccount(index);
+                if (!spotMarket) throw new HttpException(400, `Could not find spot market for index ${index}`);
+            
+                const depositRateBN = calculateDepositRate(spotMarket);
+                const borrowRateBN = calculateBorrowRate(spotMarket);
+            
+                return {
+                    depositRate: bnToDecimal(depositRateBN, 6),
+                    borrowRate: bnToDecimal(borrowRateBN, 6)
+                };
+            });
 
-        const rates = await Promise.all(promises);
-        res.status(200).json(rates);
+            const rates = await Promise.all(promises);
+            res.status(200).json(rates);
+        } catch (error) {
+            next(error);
+        }
     }
 
     public getBalance = async (req: Request, res: Response, next: NextFunction) => {
         await this.initPromise;
 
-        const address = req.query.address as string;
-        const marketIndicesParam = req.query.marketIndices as string;
-        const marketIndices = marketIndicesParam.split(',').map(Number).filter(n => !isNaN(n));
-
         try {
-            const driftUser = await this.getUser(address);
+            const address = this.validateAddress(req.query.address as string);
+            const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
+
+            const driftUser = await this.getUser(address).catch(() => {
+                throw new HttpException(400, "Invalid address");
+            });
+
             const balances = await Promise.all(marketIndices.map(async (index) => {
-                return driftUser.getTokenAmount(index);
+                return driftUser.getTokenAmount(index).toNumber();
             }));
 
             res.status(200).json(balances);
@@ -81,15 +109,18 @@ export class DriftController {
     public getWithdrawLimit = async (req: Request, res: Response, next: NextFunction) => {
         await this.initPromise;
 
-        const address = req.query.address as string;
-        const marketIndicesParam = req.query.marketIndices as string;
-        const marketIndices = marketIndicesParam.split(',').map(Number).filter(n => !isNaN(n));
-
         try {
-            const driftUser = await this.getUser(address);
+            const address = this.validateAddress(req.query.address as string);
+            const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
+
+            const driftUser = await this.getUser(address).catch(() => {
+                throw new HttpException(400, "Invalid address");
+            });
+
             const withdrawLimits = await Promise.all(marketIndices.map(async (index) => {
                 return driftUser.getWithdrawalLimit(index, false).toNumber();
             }));
+
             res.status(200).json(withdrawLimits);
         } catch (error) {
             next(error);
@@ -99,12 +130,16 @@ export class DriftController {
     public getHealth = async (req: Request, res: Response, next: NextFunction) => {
         await this.initPromise;
 
-        const address = req.query.address as string;
-
         try {
-            const driftUser = await this.getUser(address);
+            const address = this.validateAddress(req.query.address as string);
+
+            const driftUser = await this.getUser(address).catch(() => {
+                throw new HttpException(400, "Invalid address");
+            });
+
             const driftHealth = driftUser.getHealth();
             const quartzHealth = getQuartzHealth(driftHealth);
+
             res.status(200).json(quartzHealth);
         } catch (error) {
             next(error);

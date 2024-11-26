@@ -1,13 +1,22 @@
 import { BN, DRIFT_PROGRAM_ID, PublicKey } from "@drift-labs/sdk";
 import { Logger } from "winston";
-import { QUARTZ_HEALTH_BUFFER_PERCENTAGE } from "../config/constants";
+import { FUNDS_PROGRAM_ID, QUARTZ_HEALTH_BUFFER_PERCENTAGE } from "../config/constants";
 
 export function bnToDecimal(bn: BN, decimalPlaces: number): number {
     const decimalFactor = Math.pow(10, decimalPlaces);
     return bn.toNumber() / decimalFactor;
 }
+
+export const getVault = (owner: PublicKey) => {
+    const [vault] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault"), owner.toBuffer()],
+        FUNDS_PROGRAM_ID
+    )
+    return vault;
+}
   
-export const getDriftUser = (authority: PublicKey) => {
+export const getDriftUser = (user: PublicKey) => {
+    const authority = getVault(user);
     const [userPda] = PublicKey.findProgramAddressSync(
         [
 			Buffer.from("user"),

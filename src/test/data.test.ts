@@ -33,7 +33,7 @@ describe("Test /data", () => {
         expect(typeof body.bitcoin).toBe("number");
     });
 
-    it("Should return an error if the ID is invalid", async () => {
+    it("Should return 400 if the ID is invalid", async () => {
         const queryString = QueryString.stringify({
             ids: ["notAnIdSoShouldFail"],
         }, {arrayFormat: "comma"});
@@ -42,7 +42,7 @@ describe("Test /data", () => {
         expect(response.status).toBe(400);
     });
 
-    it("Should return an error if the ID is missing", async () => {
+    it("Should return 400 if the ID is missing", async () => {
         const response = await fetch(`${baseUrl}/price`);
 
         expect(response.status).toBe(400);
