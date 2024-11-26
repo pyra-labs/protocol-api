@@ -1,28 +1,28 @@
 import { Writable } from "stream";
 import winston, { createLogger, Logger, transports } from "winston";
 import nodemailer from "nodemailer";
+import config from "../config/config";
 
 export class AppLogger {
     protected logger: Logger;
 
     constructor(name: string) {
         const mailTransporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST,
-            port: parseInt(process.env.EMAIL_PORT!),
+            host: config.EMAIL_HOST,
+            port: config.EMAIL_PORT!,
             secure: false,
             auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASSWORD,
+                user: config.EMAIL_USER,
+                pass: config.EMAIL_PASSWORD,
             },
         });
 
         const mailTransportInstance = new winston.transports.Stream({
             stream: new Writable({
                 write: (message: string) => {
-                    const admins = process.env.EMAIL_TO!.split(',');
-                    for (const admin of admins) {
+                    for (const admin of config.EMAIL_TO) {
                         mailTransporter.sendMail({
-                            from: process.env.EMAIL_FROM,
+                            from: config.EMAIL_FROM,
                             to: admin,
                             subject: `${name} Error`,
                             text: message,
