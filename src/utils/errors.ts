@@ -22,8 +22,12 @@ export class ErrorMiddleware {
         try {
             const status: number = error instanceof HttpException ? error.status : 500;
             const message: string = error.message || 'Something went wrong';
-            
-            this.logger.error(`[${req.method}] ${req.path} >> StatusCode:: ${status}, Message:: ${message}`);
+
+            if (status >= 500) {
+                this.logger.error(`[${req.method}] ${req.path} >> StatusCode:: ${status}, Message:: ${message}`);
+            } else {
+                this.logger.warn(`[${req.method}] ${req.path} >> StatusCode:: ${status}, Message:: ${message}`);
+            }
 
             res.status(status).json({ message });
         } catch (error) {

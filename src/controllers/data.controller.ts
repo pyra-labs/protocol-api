@@ -1,26 +1,50 @@
 import { NextFunction, Request, Response } from "express";
+import { HttpException } from "../utils/errors";
 
 export class DataController {
+    private priceCache: Record<string, { price: number; timestamp: number }> = {};
+    private PRICE_CACHE_DURATION = 60_000;
+
     public getPrice = async (req: Request, res: Response, next: NextFunction) => {
         const ids = req.query.ids as string;
         
         try {
-            const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+            if (!ids) throw new HttpException(400, "No ID provided");
+            const idArray = ids.split(",");
 
-            if (!response.ok) {
-                return next(new Error("Failed to fetch data from CoinGecko"));
+            const now = Date.now();
+            const uncachedIds = idArray.filter(id => {
+                const cached = this.priceCache[id];
+                return !cached || (now - cached.timestamp) > this.PRICE_CACHE_DURATION;
+            });
+
+            if (uncachedIds.length > 0) {
+                const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${uncachedIds.join(',')}&vs_currencies=usd`);
+
+                if (!response.ok) {
+                    throw new HttpException(400, "Failed to fetch data from CoinGecko");
+                }
+
+                const data = await response.json();
+
+                Object.keys(data).forEach(id => {
+                    this.priceCache[id] = {
+                        price: data[id].usd,
+                        timestamp: now
+                    };
+                });
             }
 
-            const data = await response.json();
-
-            if (Object.keys(data).length === 0) {
-                return next(new Error("Invalid ID"));
-            }
-
-            const pricesUsd = Object.keys(data).reduce((acc, id) => {
-                acc[id] = data[id].usd;
+            const pricesUsd = idArray.reduce((acc, id) => {
+                if (this.priceCache[id]) {
+                    acc[id] = this.priceCache[id].price;
+                }
                 return acc;
             }, {} as Record<string, number>);
+
+            if (Object.keys(pricesUsd).length === 0) {
+                throw new HttpException(400, "Invalid ID");
+            }
 
             res.status(200).json(pricesUsd);
         } catch (error) {

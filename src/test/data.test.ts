@@ -25,8 +25,10 @@ describe("Test /data", () => {
         const body = await response.json();
 
         expect(response.status).toBe(200);
+
         expect(body).toHaveProperty("solana");
         expect(typeof body.solana).toBe("number");
+
         expect(body).toHaveProperty("bitcoin");
         expect(typeof body.bitcoin).toBe("number");
     });
@@ -37,12 +39,12 @@ describe("Test /data", () => {
         }, {arrayFormat: "comma"});
         const response = await fetch(`${baseUrl}/price?${queryString}`);
 
-        expect(response.status).toBe(500);
+        expect(response.status).toBe(400);
     });
 
     it("Should return an error if the ID is missing", async () => {
         const response = await fetch(`${baseUrl}/price`);
 
-        expect(response.status).toBe(500);
+        expect(response.status).toBe(400);
     });
 })
