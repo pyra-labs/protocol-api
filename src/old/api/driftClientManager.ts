@@ -1,7 +1,7 @@
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { Wallet, DriftClient, User as DriftUser, calculateDepositRate, calculateBorrowRate } from "@drift-labs/sdk";
-import { RPC_URL } from "../config.js";
-import { bnToDecimal } from "../helpers.js";
+import { RPC_URL } from "../config/config.js";
+import { bnToDecimal } from "../utils/helpers.js";
 
 export async function getDriftData(address: string, marketIndices: number[], driftClientManager: DriftClientManager) {
     const balancePromise = driftClientManager.getUserBalances(address, marketIndices);
