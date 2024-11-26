@@ -12,9 +12,9 @@ export class DriftRoute implements Routes {
     }
 
     private initializeRoutes() {
-        this.router.get(`${this.path}/rate`, this.driftController.getRate);
-        this.router.get(`${this.path}/balance`, this.driftController.getBalance);
-        this.router.get(`${this.path}/withdraw-limit`, this.driftController.getWithdrawLimit);
-        this.router.get(`${this.path}/health`, this.driftController.getHealth);
+        this.router.get(`/rate`, this.driftController.getRate);
+        this.router.get(`/balance`, this.driftController.getBalance);
+        this.router.get(`/withdraw-limit`, this.driftController.getWithdrawLimit);
+        this.router.get(`/health`, this.driftController.getHealth);
     }
 }

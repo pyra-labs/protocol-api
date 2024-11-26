@@ -12,6 +12,6 @@ export class DataRoute implements Routes {
     }
 
     private initializeRoutes() {
-        this.router.get(`${this.path}/price`, this.dataController.getPrice);
+        this.router.get(`/price`, this.dataController.getPrice);
     }
 }
