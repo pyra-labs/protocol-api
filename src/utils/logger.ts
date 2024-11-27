@@ -7,6 +7,19 @@ export class AppLogger {
     protected logger: Logger;
 
     constructor(name: string) {
+        const consoleFormat = winston.format.combine(
+            winston.format.colorize(),
+            winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+            winston.format.printf(({ level, message, timestamp }) => {
+                return `[${timestamp}] ${level}: ${message}`;
+            })
+        )
+
+        const mailFormat = winston.format.combine(
+            winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+            winston.format.json({ space: 2})
+        )
+
         const mailTransporter = nodemailer.createTransport({
             host: config.EMAIL_HOST,
             port: config.EMAIL_PORT!,
@@ -32,24 +45,31 @@ export class AppLogger {
                 }
             }),
             level: 'error',
-            format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+            format: mailFormat,
         });
 
         this.logger = createLogger({
             level: 'info',
-            format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
             transports: [
-                new transports.Console(),
+                new transports.Console({ format: consoleFormat }),
                 mailTransportInstance
             ],
             exceptionHandlers: [
-                new transports.Console(),
+                new transports.Console({ format: consoleFormat }),
                 mailTransportInstance
             ],
             rejectionHandlers: [
-                new transports.Console(),
+                new transports.Console({ format: consoleFormat }),
                 mailTransportInstance
             ],
+        });
+
+        process.on("uncaughtException", (error) => {
+            this.logger.error(error.message);
+        });
+
+        process.on("unhandledRejection", (reason) => {
+            this.logger.error(reason);
         });
     }
 }

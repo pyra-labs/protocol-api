@@ -62,9 +62,9 @@ export class DriftController {
     }
 
     public getRate = async (req: Request, res: Response, next: NextFunction) => {
-        await this.initPromise;
-
         try {
+            await this.initPromise;
+
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
             const now = Date.now();
@@ -96,7 +96,7 @@ export class DriftController {
                 depositRate: this.rateCache[index].depositRate,
                 borrowRate: this.rateCache[index].borrowRate
             }));
-            
+
             res.status(200).json(rates);
         } catch (error) {
             next(error);
@@ -104,9 +104,9 @@ export class DriftController {
     }
 
     public getBalance = async (req: Request, res: Response, next: NextFunction) => {
-        await this.initPromise;
-
         try {
+            await this.initPromise;
+
             const address = this.validateAddress(req.query.address as string);
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
@@ -125,9 +125,9 @@ export class DriftController {
     }
 
     public getWithdrawLimit = async (req: Request, res: Response, next: NextFunction) => {
-        await this.initPromise;
-
         try {
+            await this.initPromise;
+
             const address = this.validateAddress(req.query.address as string);
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
@@ -146,9 +146,9 @@ export class DriftController {
     }
 
     public getHealth = async (req: Request, res: Response, next: NextFunction) => {
-        await this.initPromise;
-
         try {
+            await this.initPromise;
+
             const address = this.validateAddress(req.query.address as string);
 
             const driftUser = await this.getUser(address).catch(() => {
