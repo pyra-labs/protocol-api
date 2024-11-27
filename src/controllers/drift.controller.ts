@@ -13,6 +13,9 @@ export class DriftController {
 
     private initPromise: Promise<boolean>;
 
+    private rateCache: Record<string, { depositRate: number; borrowRate: number; timestamp: number }> = {};
+    private RATE_CACHE_DURATION = 60_000;
+
     constructor() {
         this.connection = new Connection(config.RPC_URL);
 
@@ -64,20 +67,36 @@ export class DriftController {
         try {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
-            const promises = marketIndices.map(async (index) => {
-                const spotMarket = await this.driftClient.getSpotMarketAccount(index);
-                if (!spotMarket) throw new HttpException(400, `Could not find spot market for index ${index}`);
-            
-                const depositRateBN = calculateDepositRate(spotMarket);
-                const borrowRateBN = calculateBorrowRate(spotMarket);
-            
-                return {
-                    depositRate: bnToDecimal(depositRateBN, 6),
-                    borrowRate: bnToDecimal(borrowRateBN, 6)
-                };
+            const now = Date.now();
+            const uncachedMarketIndices = marketIndices.filter(index => {
+                const cached = this.rateCache[index];
+                return !cached || (now - cached.timestamp) > this.RATE_CACHE_DURATION;
             });
 
-            const rates = await Promise.all(promises);
+            if (uncachedMarketIndices.length > 0) {
+                const promises = uncachedMarketIndices.map(async (index) => {
+                    const spotMarket = await this.driftClient.getSpotMarketAccount(index);
+                    if (!spotMarket) throw new HttpException(400, `Could not find spot market for index ${index}`);
+                
+                    const depositRateBN = calculateDepositRate(spotMarket);
+                    const borrowRateBN = calculateBorrowRate(spotMarket);
+                
+                    // Update cache
+                    this.rateCache[index] = {
+                        depositRate: bnToDecimal(depositRateBN, 6),
+                        borrowRate: bnToDecimal(borrowRateBN, 6),
+                        timestamp: now
+                    };
+                });
+    
+                await Promise.all(promises);
+            }
+
+            const rates = marketIndices.map(index => ({
+                depositRate: this.rateCache[index].depositRate,
+                borrowRate: this.rateCache[index].borrowRate
+            }));
+            
             res.status(200).json(rates);
         } catch (error) {
             next(error);
