@@ -91,8 +91,8 @@ export class DriftController {
             const address = this.validateAddress(req.query.address as string);
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
-            const driftUser = await this.getUser(address).catch((error) => {
-                throw new HttpException(400, `User not found: ${error}`);
+            const driftUser = await this.getUser(address).catch(() => {
+                throw new HttpException(400, "User not found");
             });
 
             const balances = await Promise.all(marketIndices.map(async (index) => {
@@ -112,8 +112,8 @@ export class DriftController {
             const address = this.validateAddress(req.query.address as string);
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
-            const driftUser = await this.getUser(address).catch((error) => {
-                throw new HttpException(400, `User not found: ${error}`);
+            const driftUser = await this.getUser(address).catch(() => {
+                throw new HttpException(400, "User not found");
             });
 
             const withdrawLimits = await Promise.all(marketIndices.map(async (index) => {
@@ -132,8 +132,8 @@ export class DriftController {
         try {
             const address = this.validateAddress(req.query.address as string);
 
-            const driftUser = await this.getUser(address).catch((error) => {
-                throw new HttpException(400, `User not found: ${error}`);
+            const driftUser = await this.getUser(address).catch(() => {
+                throw new HttpException(400, "User not found");
             });
 
             const driftHealth = driftUser.getHealth();
