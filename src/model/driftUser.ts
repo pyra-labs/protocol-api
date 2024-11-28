@@ -94,8 +94,8 @@ export class DriftUser {
 		console.log("borrowLimit", borrowLimit.toString());
 		console.log("withdrawLimit", withdrawLimit.toString());
 
-		const freeCollateral = this.getFreeCollateral("Initial", preventAutoRepay);
-		const initialMarginRequirement = this.getMarginRequirement('Initial', undefined, false, preventAutoRepay);
+		const freeCollateral = this.getFreeCollateral("Initial");
+		const initialMarginRequirement = this.getMarginRequirement('Initial', undefined, false);
 		const oracleData = this.driftClient.getOracleDataForSpotMarket(marketIndex);
 		const precisionIncrease = TEN.pow(new BN(spotMarket!.decimals - 6));
 
@@ -180,11 +180,11 @@ export class DriftUser {
 		}
 	}
 
-	private getFreeCollateral(marginCategory: MarginCategory = 'Initial', preventAutoRepay: boolean = true): BN {
+	private getFreeCollateral(marginCategory: MarginCategory = 'Initial'): BN {
 		const totalCollateral = this.getTotalCollateral(marginCategory, true);
 		const marginRequirement =
 			marginCategory === 'Initial'
-				? this.getMarginRequirement('Initial', undefined, false, preventAutoRepay)
+				? this.getMarginRequirement('Initial', undefined, false)
 				: this.getMaintenanceMarginRequirement();
 		const freeCollateral = totalCollateral.sub(marginRequirement);
 		return freeCollateral.gte(ZERO) ? freeCollateral : ZERO;
@@ -895,8 +895,7 @@ export class DriftUser {
 		marginCategory: MarginCategory,
 		liquidationBuffer?: BN,
 		strict = false,
-		includeOpenOrders = true,
-		preventAutoRepay: boolean = true
+		includeOpenOrders = true
 	): BN {
 		const driftMarginRequirement = this.getTotalPerpPositionLiability(
 			marginCategory,
@@ -913,11 +912,11 @@ export class DriftUser {
 			)
 		);
 
-		if (preventAutoRepay) {
-			return driftMarginRequirement.mul(new BN(100)).div(
-				new BN(100 - QUARTZ_HEALTH_BUFFER_PERCENTAGE)
-			);
-		}
+		// if (preventAutoRepay) {
+		// 	return driftMarginRequirement.mul(new BN(100)).div(
+		// 		new BN(100 - QUARTZ_HEALTH_BUFFER_PERCENTAGE)
+		// 	);
+		// }
 
 		return driftMarginRequirement;
 	}
