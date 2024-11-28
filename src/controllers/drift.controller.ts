@@ -6,6 +6,7 @@ import { bnToDecimal, getQuartzHealth, retryRPCWithBackoff } from "../utils/help
 import { DriftUser } from "../model/driftUser.js";
 import { PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
+import { SUPPORTED_DRIFT_MARKET_INDICES } from "../config/constants.js";
 
 export class DriftController {
     private connection: Connection;
@@ -56,6 +57,10 @@ export class DriftController {
         const marketIndices = decodedMarketIndices.split(',').map(Number).filter(n => !isNaN(n));
         if (marketIndices.length === 0) {
             throw new HttpException(400, "Invalid market indices");
+        }
+
+        if (marketIndices.some(index => !SUPPORTED_DRIFT_MARKET_INDICES.includes(index))) {
+            throw new HttpException(400, "Unsupported market index");
         }
 
         return marketIndices;

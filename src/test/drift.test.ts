@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import config from "../config/config";
 import QueryString from "qs";
-import { Keypair, PublicKey } from "@solana/web3.js";
 
 const baseUrl = `http://localhost:${config.PORT}/drift`;
 const testWallet = "DcJpAhpbhwgXF5UBJP1KN6ub4GS61TmAb32LtoB57pAf";

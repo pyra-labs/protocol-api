@@ -1,6 +1,7 @@
 import { AMM_RESERVE_PRECISION, AMM_RESERVE_PRECISION_EXP, BN, calculateAssetWeight, calculateLiabilityWeight, calculateLiveOracleTwap, calculateMarketMarginRatio, calculateMarketOpenBidAsk, calculatePerpLiabilityValue, calculatePositionPNL, calculateUnrealizedAssetWeight, calculateUnsettledFundingPnl, calculateWithdrawLimit, calculateWorstCasePerpLiabilityValue, DriftClient, fetchUserAccountsUsingKeys, FIVE_MINUTE, getSignedTokenAmount, getStrictTokenValue, getTokenAmount, getWorstCaseTokenAmounts, isSpotPositionAvailable, isVariant, MARGIN_PRECISION, MarginCategory, ONE, OPEN_ORDER_MARGIN_REQUIREMENT, PerpPosition, PRICE_PRECISION, QUOTE_PRECISION, QUOTE_SPOT_MARKET_INDEX, SPOT_MARKET_WEIGHT_PRECISION, SpotBalanceType, StrictOraclePrice, UserAccount, UserStatus, ZERO, TEN, divCeil, SpotMarketAccount } from "@drift-labs/sdk";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getDriftUser } from "../utils/helpers.js";
+import { QUARTZ_HEALTH_BUFFER_PERCENTAGE } from "../config/constants.js";
 
 export class DriftUser {
     private isInitialized: boolean = false;
@@ -80,7 +81,7 @@ export class DriftUser {
 		);
 	}
 
-	public getWithdrawalLimit(marketIndex: number, reduceOnly?: boolean): BN {
+	public getWithdrawalLimit(marketIndex: number, reduceOnly?: boolean, preventAutoRepay: boolean = true): BN {
 		const nowTs = new BN(Math.floor(Date.now() / 1000));
 		const spotMarket = this.driftClient.getSpotMarketAccount(marketIndex);
 
@@ -90,8 +91,8 @@ export class DriftUser {
 			nowTs
 		);
 
-		const freeCollateral = this.getFreeCollateral();
-		const initialMarginRequirement = this.getMarginRequirement('Initial', undefined, false);
+		const freeCollateral = this.getFreeCollateral("Initial", preventAutoRepay);
+		const initialMarginRequirement = this.getMarginRequirement('Initial', undefined, false, preventAutoRepay);
 		const oracleData = this.driftClient.getOracleDataForSpotMarket(marketIndex);
 		const precisionIncrease = TEN.pow(new BN(spotMarket!.decimals - 6));
 
@@ -156,11 +157,11 @@ export class DriftUser {
 		}
 	}
 
-	private getFreeCollateral(marginCategory: MarginCategory = 'Initial'): BN {
+	private getFreeCollateral(marginCategory: MarginCategory = 'Initial', preventAutoRepay: boolean = true): BN {
 		const totalCollateral = this.getTotalCollateral(marginCategory, true);
 		const marginRequirement =
 			marginCategory === 'Initial'
-				? this.getMarginRequirement('Initial', undefined, false)
+				? this.getMarginRequirement('Initial', undefined, false, preventAutoRepay)
 				: this.getMaintenanceMarginRequirement();
 		const freeCollateral = totalCollateral.sub(marginRequirement);
 		return freeCollateral.gte(ZERO) ? freeCollateral : ZERO;
@@ -871,9 +872,10 @@ export class DriftUser {
 		marginCategory: MarginCategory,
 		liquidationBuffer?: BN,
 		strict = false,
-		includeOpenOrders = true
+		includeOpenOrders = true,
+		preventAutoRepay: boolean = true
 	): BN {
-		return this.getTotalPerpPositionLiability(
+		const driftMarginRequirement = this.getTotalPerpPositionLiability(
 			marginCategory,
 			liquidationBuffer,
 			includeOpenOrders,
@@ -887,6 +889,14 @@ export class DriftUser {
 				strict
 			)
 		);
+
+		if (preventAutoRepay) {
+			return driftMarginRequirement.mul(new BN(100)).div(
+				new BN(100 - QUARTZ_HEALTH_BUFFER_PERCENTAGE)
+			);
+		}
+
+		return driftMarginRequirement;
 	}
 
     private getTotalPerpPositionLiability(
