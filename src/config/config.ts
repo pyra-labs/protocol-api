@@ -25,4 +25,3 @@ const envSchema = z.object({
 
 const config = envSchema.parse(process.env);
 export default config;
-
