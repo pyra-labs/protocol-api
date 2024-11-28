@@ -157,7 +157,7 @@ export class DriftUser {
 		}
 	}
 
-	private getFreeCollateral(marginCategory: MarginCategory = 'Initial', preventAutoRepay: boolean = true): BN {
+	private getFreeCollateral(marginCategory: MarginCategory = 'Initial', preventAutoRepay: boolean = false): BN {
 		const totalCollateral = this.getTotalCollateral(marginCategory, true);
 		const marginRequirement =
 			marginCategory === 'Initial'
@@ -873,7 +873,7 @@ export class DriftUser {
 		liquidationBuffer?: BN,
 		strict = false,
 		includeOpenOrders = true,
-		preventAutoRepay: boolean = true
+		preventAutoRepay: boolean = false
 	): BN {
 		const driftMarginRequirement = this.getTotalPerpPositionLiability(
 			marginCategory,
