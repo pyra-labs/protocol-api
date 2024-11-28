@@ -144,13 +144,6 @@ export class DriftController {
                 return driftUser.getWithdrawalLimit(index, false, true).toNumber();
             }));
 
-            const withdrawLimitsRaw = await Promise.all(marketIndices.map(async (index) => {
-                return driftUser.getWithdrawalLimit(index, false, false).toNumber();
-            }));
-
-            console.log("withdrawLimits", withdrawLimits);
-            console.log("withdrawLimitsRaw", withdrawLimitsRaw);
-
             res.status(200).json(withdrawLimits);
         } catch (error) {
             next(error);

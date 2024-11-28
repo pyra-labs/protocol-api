@@ -91,17 +91,10 @@ export class DriftUser {
 			nowTs
 		);
 
-		console.log("borrowLimit", borrowLimit.toString());
-		console.log("withdrawLimit", withdrawLimit.toString());
-
-		const freeCollateral = this.getFreeCollateral("Initial");
-		const initialMarginRequirement = this.getMarginRequirement('Initial', undefined, false);
+		const freeCollateral = this.getFreeCollateral("Initial", preventAutoRepay);
+		const initialMarginRequirement = this.getMarginRequirement('Initial', undefined, false, true, preventAutoRepay);
 		const oracleData = this.driftClient.getOracleDataForSpotMarket(marketIndex);
 		const precisionIncrease = TEN.pow(new BN(spotMarket!.decimals - 6));
-
-		console.log("freeCollateral", freeCollateral.toString());
-		console.log("initialMarginRequirement", initialMarginRequirement.toString());
-		console.log("oracleData", oracleData.price.toString());
 
 		const { canBypass, depositAmount: userDepositAmount } =
 			this.canBypassWithdrawLimits(marketIndex);
@@ -109,16 +102,12 @@ export class DriftUser {
 			withdrawLimit = BN.max(withdrawLimit, userDepositAmount);
 		}
 
-		console.log("userDepositAmount", userDepositAmount.toString());
-
 		const assetWeight = calculateAssetWeight(
 			userDepositAmount,
 			oracleData.price,
 			spotMarket!,
 			'Initial'
 		);
-
-		console.log("assetWeight", assetWeight.toString());
 
 		let amountWithdrawable;
 		if (assetWeight.eq(ZERO)) {
@@ -134,14 +123,10 @@ export class DriftUser {
 			).mul(precisionIncrease);
 		}
 
-		console.log("amountWithdrawable", amountWithdrawable.toString());
-
 		const maxWithdrawValue = BN.min(
 			BN.min(amountWithdrawable, userDepositAmount),
 			withdrawLimit.abs()
 		);
-
-		console.log("maxWithdrawValue", maxWithdrawValue.toString());
 
 		if (reduceOnly) {
 			return BN.max(maxWithdrawValue, ZERO);
@@ -152,13 +137,9 @@ export class DriftUser {
 				false
 			);
 
-			console.log("weightedAssetValue", weightedAssetValue.toString());
-
 			const freeCollatAfterWithdraw = userDepositAmount.gt(ZERO)
 				? freeCollateral.sub(weightedAssetValue)
 				: freeCollateral;
-
-			console.log("freeCollatAfterWithdraw", freeCollatAfterWithdraw.toString());
 
 			const maxLiabilityAllowed = freeCollatAfterWithdraw
 				.mul(MARGIN_PRECISION)
@@ -167,24 +148,20 @@ export class DriftUser {
 				.div(oracleData.price)
 				.mul(precisionIncrease);
 
-			console.log("maxLiabilityAllowed", maxLiabilityAllowed.toString());
-
 			const maxBorrowValue = BN.min(
 				maxWithdrawValue.add(maxLiabilityAllowed),
 				borrowLimit.abs()
 			);
 
-			console.log("maxBorrowValue", maxBorrowValue.toString());
-
 			return BN.max(maxBorrowValue, ZERO);
 		}
 	}
 
-	private getFreeCollateral(marginCategory: MarginCategory = 'Initial'): BN {
+	private getFreeCollateral(marginCategory: MarginCategory = 'Initial', preventAutoRepay: boolean = false): BN {
 		const totalCollateral = this.getTotalCollateral(marginCategory, true);
 		const marginRequirement =
 			marginCategory === 'Initial'
-				? this.getMarginRequirement('Initial', undefined, false)
+				? this.getMarginRequirement('Initial', undefined, false, true,preventAutoRepay)
 				: this.getMaintenanceMarginRequirement();
 		const freeCollateral = totalCollateral.sub(marginRequirement);
 		return freeCollateral.gte(ZERO) ? freeCollateral : ZERO;
@@ -895,7 +872,8 @@ export class DriftUser {
 		marginCategory: MarginCategory,
 		liquidationBuffer?: BN,
 		strict = false,
-		includeOpenOrders = true
+		includeOpenOrders = true,
+		preventAutoRepay = false
 	): BN {
 		const driftMarginRequirement = this.getTotalPerpPositionLiability(
 			marginCategory,
@@ -912,11 +890,12 @@ export class DriftUser {
 			)
 		);
 
-		// if (preventAutoRepay) {
-		// 	return driftMarginRequirement.mul(new BN(100)).div(
-		// 		new BN(100 - QUARTZ_HEALTH_BUFFER_PERCENTAGE)
-		// 	);
-		// }
+		if (preventAutoRepay) {
+			const adjusted =  driftMarginRequirement.mul(new BN(100)).div(
+				new BN(100 - QUARTZ_HEALTH_BUFFER_PERCENTAGE)
+			);
+			return adjusted;
+		}
 
 		return driftMarginRequirement;
 	}
