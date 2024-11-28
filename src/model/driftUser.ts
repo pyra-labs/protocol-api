@@ -81,7 +81,7 @@ export class DriftUser {
 		);
 	}
 
-	public getWithdrawalLimit(marketIndex: number, reduceOnly?: boolean, preventAutoRepay: boolean = true): BN {
+	public getWithdrawalLimit(marketIndex: number, reduceOnly?: boolean, preventAutoRepay: boolean = false): BN {
 		const nowTs = new BN(Math.floor(Date.now() / 1000));
 		const spotMarket = this.driftClient.getSpotMarketAccount(marketIndex);
 
