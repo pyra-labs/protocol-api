@@ -37,7 +37,7 @@ export class DriftUser {
 
         if (this.isBeingLiquidated()) return 0;
 
-        const totalCollateral = this.getTotalCollateral('Maintenance');
+        const totalCollateral = this.getTotalCollateralValue('Maintenance');
 		const maintenanceMarginReq = this.getMaintenanceMarginRequirement();
 
 		if (maintenanceMarginReq.eq(ZERO) && totalCollateral.gte(ZERO)) {
@@ -82,6 +82,8 @@ export class DriftUser {
 	}
 
 	public getWithdrawalLimit(marketIndex: number, reduceOnly?: boolean, preventAutoRepay: boolean = false): BN {
+		if (!this.isInitialized) throw new Error("DriftUser not initialized");
+
 		const nowTs = new BN(Math.floor(Date.now() / 1000));
 		const spotMarket = this.driftClient.getSpotMarketAccount(marketIndex);
 
@@ -157,8 +159,22 @@ export class DriftUser {
 		}
 	}
 
+	public getTotalCollateralValue(
+		marginCategory: MarginCategory = 'Initial',
+		strict = false,
+		includeOpenOrders = true
+	): BN {
+		if (!this.isInitialized) throw new Error("DriftUser not initialized");
+		return this.getSpotMarketAssetValue(
+			marginCategory,
+			undefined,
+			includeOpenOrders,
+			strict
+		).add(this.getUnrealizedPNL(true, undefined, marginCategory, strict));
+	}
+
 	private getFreeCollateral(marginCategory: MarginCategory = 'Initial', preventAutoRepay: boolean = false): BN {
-		const totalCollateral = this.getTotalCollateral(marginCategory, true);
+		const totalCollateral = this.getTotalCollateralValue(marginCategory, true);
 		const marginRequirement =
 			marginCategory === 'Initial'
 				? this.getMarginRequirement('Initial', undefined, false, true,preventAutoRepay)
@@ -228,19 +244,6 @@ export class DriftUser {
 				(UserStatus.BEING_LIQUIDATED | UserStatus.BANKRUPT)) >
 			0
 		);
-	}
-
-    private getTotalCollateral(
-		marginCategory: MarginCategory = 'Initial',
-		strict = false,
-		includeOpenOrders = true
-	): BN {
-		return this.getSpotMarketAssetValue(
-			marginCategory,
-			undefined,
-			includeOpenOrders,
-			strict
-		).add(this.getUnrealizedPNL(true, undefined, marginCategory, strict));
 	}
 
     private getSpotMarketAssetValue(

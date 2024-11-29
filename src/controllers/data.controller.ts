@@ -7,6 +7,8 @@ import quartzIdl from "../idl/quartz.json" with { type: "json" };
 import { Quartz } from "../types/quartz.js";
 import { QUARTZ_PROGRAM_ID } from "../config/constants.js";
 import { retryRPCWithBackoff } from "../utils/helpers.js";
+import { DriftUser } from "../model/driftUser.js";
+import { DriftClient } from "@drift-labs/sdk";
 
 export class DataController {
     private priceCache: Record<string, { price: number; timestamp: number }> = {};
@@ -14,14 +16,23 @@ export class DataController {
 
     private connection: Connection;
     private program: Program<Quartz>;
+    private driftClient: DriftClient;
+    private driftClientInitPromise: Promise<boolean>;
 
     constructor() {
         this.connection = new Connection(config.RPC_URL);
-
         const wallet = new Wallet(Keypair.generate());
+
         const provider = new AnchorProvider(this.connection, wallet, { commitment: "confirmed" });
         setProvider(provider);
         this.program = new Program(quartzIdl as Idl, QUARTZ_PROGRAM_ID, provider) as unknown as Program<Quartz>;
+
+        this.driftClient = new DriftClient({
+            connection: this.connection,
+            wallet: wallet,
+            env: 'mainnet-beta',
+        });
+        this.driftClientInitPromise = this.driftClient.subscribe();
     }
 
     public getPrice = async (req: Request, res: Response, next: NextFunction) => {
@@ -87,6 +98,35 @@ export class DataController {
             res.status(200).json({
                 count: users.length,
                 users: users
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    public getTVL = async (req: Request, res: Response, next: NextFunction) => {
+        await this.driftClientInitPromise;
+
+        try {
+            const vaults = await retryRPCWithBackoff(
+                async () => this.program.account.vault.all(),
+                3,
+                1_000
+            );
+
+            let tvl = 0;
+            for (const vault of vaults) {
+                const driftUser = new DriftUser(vault.account.owner, this.connection, this.driftClient!);
+                await retryRPCWithBackoff(
+                    async () => driftUser.initialize(),
+                    3,
+                    1_000
+                );
+                tvl += driftUser.getTotalCollateralValue().toNumber();
+            }
+
+            res.status(200).json({
+                usd: tvl
             });
         } catch (error) {
             next(error);

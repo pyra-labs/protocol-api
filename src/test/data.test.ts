@@ -4,6 +4,7 @@ import QueryString from "qs";
 
 const baseUrl = `http://localhost:${config.PORT}/data`;
 
+
 describe("Test /data/price", () => {
     const routeUrl = `${baseUrl}/price`;
 
@@ -51,6 +52,7 @@ describe("Test /data/price", () => {
     });
 })
 
+
 describe("Test /data/users", () => {
     const routeUrl = `${baseUrl}/users`;
 
@@ -70,5 +72,21 @@ describe("Test /data/users", () => {
         expect(body.users.every(
             (user: string) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(user)
         )).toBe(true);
+    });
+})
+
+
+describe("Test /data/tvl", () => {
+    const routeUrl = `${baseUrl}/tvl`;
+
+    it("Should return the TVL", async () => {
+        const response = await fetch(routeUrl);
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+
+        expect(body).toHaveProperty("usd");
+        expect(typeof body.usd).toBe("number");
+        expect(body.usd).toBeGreaterThan(0);
     });
 })
