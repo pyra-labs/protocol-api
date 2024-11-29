@@ -5,7 +5,7 @@ import { Connection, Keypair } from "@solana/web3.js";
 import config from "../config/config.js";
 import quartzIdl from "../idl/quartz.json" with { type: "json" };
 import { Quartz } from "../types/quartz.js";
-import { QUARTZ_PROGRAM_ID } from "../config/constants.js";
+import { BASE_UNITS_PER_USDC, QUARTZ_PROGRAM_ID } from "../config/constants.js";
 import { retryRPCWithBackoff } from "../utils/helpers.js";
 import { DriftUser } from "../model/driftUser.js";
 import { DriftClient } from "@drift-labs/sdk";
@@ -114,7 +114,7 @@ export class DataController {
                 1_000
             );
 
-            let tvl = 0;
+            let tvlUsdcBaseUnits = 0;
             for (const vault of vaults) {
                 const driftUser = new DriftUser(vault.account.owner, this.connection, this.driftClient!);
                 await retryRPCWithBackoff(
@@ -122,11 +122,13 @@ export class DataController {
                     3,
                     1_000
                 );
-                tvl += driftUser.getTotalCollateralValue().toNumber();
+                tvlUsdcBaseUnits += driftUser.getTotalCollateralValue().toNumber();
             }
 
+            const tvlUsd = Number((tvlUsdcBaseUnits / BASE_UNITS_PER_USDC).toFixed(2));
+
             res.status(200).json({
-                usd: tvl
+                usd: tvlUsd
             });
         } catch (error) {
             next(error);

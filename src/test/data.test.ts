@@ -88,5 +88,6 @@ describe("Test /data/tvl", () => {
         expect(body).toHaveProperty("usd");
         expect(typeof body.usd).toBe("number");
         expect(body.usd).toBeGreaterThan(0);
+        expect(body.usd.toFixed(2)).toBe(body.usd.toString());
     });
 })
