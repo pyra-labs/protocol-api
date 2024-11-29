@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import config from "../config/config";
+import config from "../config/config.js";
 import QueryString from "qs";
 
 const baseUrl = `http://localhost:${config.PORT}/drift`;

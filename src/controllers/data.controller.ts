@@ -1,9 +1,28 @@
 import { NextFunction, Request, Response } from "express";
 import { HttpException } from "../utils/errors.js";
+import { AnchorProvider, Idl, Program, setProvider, Wallet } from "@coral-xyz/anchor";
+import { Connection, Keypair } from "@solana/web3.js";
+import config from "../config/config.js";
+import quartzIdl from "../idl/quartz.json" with { type: "json" };
+import { Quartz } from "../types/quartz.js";
+import { QUARTZ_PROGRAM_ID } from "../config/constants.js";
+import { retryRPCWithBackoff } from "../utils/helpers.js";
 
 export class DataController {
     private priceCache: Record<string, { price: number; timestamp: number }> = {};
     private PRICE_CACHE_DURATION = 60_000;
+
+    private connection: Connection;
+    private program: Program<Quartz>;
+
+    constructor() {
+        this.connection = new Connection(config.RPC_URL);
+
+        const wallet = new Wallet(Keypair.generate());
+        const provider = new AnchorProvider(this.connection, wallet, { commitment: "confirmed" });
+        setProvider(provider);
+        this.program = new Program(quartzIdl as Idl, QUARTZ_PROGRAM_ID, provider) as unknown as Program<Quartz>;
+    }
 
     public getPrice = async (req: Request, res: Response, next: NextFunction) => {
         const ids = req.query.ids as string;
@@ -48,6 +67,27 @@ export class DataController {
             }
 
             res.status(200).json(pricesUsd);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    public getUsers = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const vaults = await retryRPCWithBackoff(
+                async () => {
+                    return await this.program.account.vault.all();
+                },
+                3,
+                1_000
+            );
+
+            const users = vaults.map(vault => vault.account.owner.toBase58());
+
+            res.status(200).json({
+                count: users.length,
+                users: users
+            });
         } catch (error) {
             next(error);
         }
