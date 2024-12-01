@@ -6,7 +6,7 @@ import { bnToDecimal, getQuartzHealth, retryRPCWithBackoff } from "../utils/help
 import { DriftUser } from "../model/driftUser.js";
 import { PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
-import { SUPPORTED_DRIFT_MARKET_INDICES } from "../config/constants.js";
+import { SUPPORTED_DRIFT_MARKET_INDICES, SUPPORTED_DRIFT_MARKETS } from "../config/constants.js";
 
 export class DriftController {
     private connection: Connection;
@@ -25,6 +25,13 @@ export class DriftController {
             connection: this.connection,
             wallet: wallet,
             env: 'mainnet-beta',
+            userStats: false,
+            perpMarketIndexes: [],
+            spotMarketIndexes: SUPPORTED_DRIFT_MARKETS,
+            accountSubscription: {
+                type: 'websocket',
+                commitment: "confirmed"
+            }
         });
         this.initPromise = this.driftClient.subscribe();
     }

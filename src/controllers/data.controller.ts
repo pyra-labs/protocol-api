@@ -5,7 +5,7 @@ import { Connection, Keypair } from "@solana/web3.js";
 import config from "../config/config.js";
 import quartzIdl from "../idl/quartz.json" with { type: "json" };
 import { Quartz } from "../types/quartz.js";
-import { BASE_UNITS_PER_USDC, QUARTZ_PROGRAM_ID } from "../config/constants.js";
+import { BASE_UNITS_PER_USDC, QUARTZ_PROGRAM_ID, SUPPORTED_DRIFT_MARKETS } from "../config/constants.js";
 import { retryRPCWithBackoff } from "../utils/helpers.js";
 import { DriftUser } from "../model/driftUser.js";
 import { DriftClient } from "@drift-labs/sdk";
@@ -31,6 +31,13 @@ export class DataController {
             connection: this.connection,
             wallet: wallet,
             env: 'mainnet-beta',
+            userStats: false,
+            perpMarketIndexes: [],
+            spotMarketIndexes: SUPPORTED_DRIFT_MARKETS,
+            accountSubscription: {
+                type: 'websocket',
+                commitment: "confirmed"
+            }
         });
         this.driftClientInitPromise = this.driftClient.subscribe();
     }
