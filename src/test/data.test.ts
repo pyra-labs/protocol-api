@@ -85,9 +85,16 @@ describe("Test /data/tvl", () => {
 
         expect(response.status).toBe(200);
 
-        expect(body).toHaveProperty("usd");
-        expect(typeof body.usd).toBe("number");
-        expect(body.usd).toBeGreaterThan(0);
-        expect(body.usd.toFixed(2)).toBe(body.usd.toString());
+        expect(body).toHaveProperty("collateral");
+        expect(typeof body.collateral).toBe("number");
+        expect(body.collateral).toBeGreaterThan(0);
+
+        expect(body).toHaveProperty("loans");
+        expect(typeof body.loans).toBe("number");
+        expect(body.loans).toBeGreaterThan(0);
+
+        expect(body).toHaveProperty("net");
+        expect(typeof body.net).toBe("number");
+        expect(body.net).toBeGreaterThan(0);
     });
 })

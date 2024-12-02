@@ -14,14 +14,22 @@ export class DriftUser {
     constructor (
         authority: PublicKey,
         connection: Connection, 
-        driftClient: DriftClient
+        driftClient: DriftClient,
+		userAccount?: UserAccount
     ) {
         this.authority = authority;
         this.connection = connection;
         this.driftClient = driftClient;
+
+		if (userAccount) {
+			this.userAccount = userAccount;
+			this.isInitialized = true;
+		}
     }
 
     public async initialize(): Promise<void> {
+		if (this.isInitialized) return;
+		
         const [ userAccount ] = await fetchUserAccountsUsingKeys(
             this.connection, 
             this.driftClient.program, 
@@ -171,6 +179,23 @@ export class DriftUser {
 			includeOpenOrders,
 			strict
 		).add(this.getUnrealizedPNL(true, undefined, marginCategory, strict));
+	}
+
+	public getTotalLiabilityValue(
+		marginCategory: MarginCategory = 'Maintenance'
+	): BN {
+		return this.getTotalPerpPositionLiability(
+			marginCategory,
+			undefined,
+			true
+		).add(
+			this.getSpotMarketLiabilityValue(
+				marginCategory,
+				undefined,
+				undefined,
+				true
+			)
+		);
 	}
 
 	private getFreeCollateral(marginCategory: MarginCategory = 'Initial', preventAutoRepay: boolean = false): BN {

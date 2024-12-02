@@ -6,9 +6,9 @@ import config from "../config/config.js";
 import quartzIdl from "../idl/quartz.json" with { type: "json" };
 import { Quartz } from "../types/quartz.js";
 import { BASE_UNITS_PER_USDC, QUARTZ_PROGRAM_ID, SUPPORTED_DRIFT_MARKETS } from "../config/constants.js";
-import { retryRPCWithBackoff } from "../utils/helpers.js";
+import { getDriftUser, retryRPCWithBackoff } from "../utils/helpers.js";
 import { DriftUser } from "../model/driftUser.js";
-import { DriftClient } from "@drift-labs/sdk";
+import { DriftClient, fetchUserAccountsUsingKeys, UserAccount } from "@drift-labs/sdk";
 
 export class DataController {
     private priceCache: Record<string, { price: number; timestamp: number }> = {};
@@ -115,27 +115,41 @@ export class DataController {
         await this.driftClientInitPromise;
 
         try {
-            const vaults = await retryRPCWithBackoff(
-                async () => this.program.account.vault.all(),
+            const [vaults, driftUsers] = await retryRPCWithBackoff(
+                async () => {
+                    const vaults = await this.program.account.vault.all();
+                    const driftUsers = await fetchUserAccountsUsingKeys(
+                        this.connection, 
+                        this.driftClient!.program, 
+                        vaults.map((vault) => getDriftUser(vault.account.owner))
+                    );
+                    const undefinedIndex = driftUsers.findIndex(user => !user);
+                    if (undefinedIndex !== -1) {
+                        throw new Error(`Failed to fetch drift user for vault ${vaults[undefinedIndex].publicKey.toString()}`);
+                    }
+                    return [
+                        vaults,
+                        driftUsers as UserAccount[]
+                    ]
+                },
                 3,
                 1_000
             );
 
-            let tvlUsdcBaseUnits = 0;
-            for (const vault of vaults) {
-                const driftUser = new DriftUser(vault.account.owner, this.connection, this.driftClient!);
-                await retryRPCWithBackoff(
-                    async () => driftUser.initialize(),
-                    3,
-                    1_000
-                );
-                tvlUsdcBaseUnits += driftUser.getTotalCollateralValue().toNumber();
+            let totalCollateralInUsdc = 0;
+            let totalLoansInUsdc = 0;
+            for (let i = 0; i < vaults.length; i++) {
+                const driftUser = new DriftUser(vaults[i].account.owner, this.connection, this.driftClient!, driftUsers[i]);
+                totalCollateralInUsdc += driftUser.getTotalCollateralValue().toNumber();
+                totalLoansInUsdc += driftUser.getTotalLiabilityValue().toNumber();
             }
 
-            const tvlUsd = Number((tvlUsdcBaseUnits / BASE_UNITS_PER_USDC).toFixed(2));
+            const baseUnitsToUsd = (baseUnits: number) => Number((baseUnits / BASE_UNITS_PER_USDC).toFixed(2));
 
             res.status(200).json({
-                usd: tvlUsd
+                collateral: baseUnitsToUsd(totalCollateralInUsdc),
+                loans: baseUnitsToUsd(totalLoansInUsdc),
+                net: baseUnitsToUsd(totalCollateralInUsdc - totalLoansInUsdc)
             });
         } catch (error) {
             next(error);
