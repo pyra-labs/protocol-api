@@ -9,15 +9,15 @@ import { BASE_UNITS_PER_USDC, QUARTZ_PROGRAM_ID, SUPPORTED_DRIFT_MARKETS } from 
 import { getDriftUser, retryRPCWithBackoff } from "../utils/helpers.js";
 import { DriftUser } from "../model/driftUser.js";
 import { DriftClient, fetchUserAccountsUsingKeys, UserAccount } from "@drift-labs/sdk";
+import { DriftClientService } from "../services/driftClientService.js";
 
 export class DataController {
-    private priceCache: Record<string, { price: number; timestamp: number }> = {};
-    private PRICE_CACHE_DURATION = 60_000;
-
     private connection: Connection;
     private program: Program<Quartz>;
-    private driftClient: DriftClient;
-    private driftClientInitPromise: Promise<boolean>;
+    private driftClientPromise: Promise<DriftClient>;
+
+    private priceCache: Record<string, { price: number; timestamp: number }> = {};
+    private PRICE_CACHE_DURATION = 60_000;
 
     constructor() {
         this.connection = new Connection(config.RPC_URL);
@@ -27,19 +27,7 @@ export class DataController {
         setProvider(provider);
         this.program = new Program(quartzIdl as Idl, QUARTZ_PROGRAM_ID, provider) as unknown as Program<Quartz>;
 
-        this.driftClient = new DriftClient({
-            connection: this.connection,
-            wallet: wallet,
-            env: 'mainnet-beta',
-            userStats: false,
-            perpMarketIndexes: [],
-            spotMarketIndexes: SUPPORTED_DRIFT_MARKETS,
-            accountSubscription: {
-                type: 'websocket',
-                commitment: "confirmed"
-            }
-        });
-        this.driftClientInitPromise = this.driftClient.subscribe();
+        this.driftClientPromise = DriftClientService.getDriftClient();
     }
 
     public getPrice = async (req: Request, res: Response, next: NextFunction) => {
@@ -112,7 +100,7 @@ export class DataController {
     }
 
     public getTVL = async (req: Request, res: Response, next: NextFunction) => {
-        await this.driftClientInitPromise;
+        const driftClient = await this.driftClientPromise;
 
         try {
             const [vaults, driftUsers] = await retryRPCWithBackoff(
@@ -120,7 +108,7 @@ export class DataController {
                     const vaults = await this.program.account.vault.all();
                     const driftUsers = await fetchUserAccountsUsingKeys(
                         this.connection, 
-                        this.driftClient!.program, 
+                        driftClient.program, 
                         vaults.map((vault) => getDriftUser(vault.account.owner))
                     );
                     const undefinedIndex = driftUsers.findIndex(user => !user);
@@ -139,7 +127,7 @@ export class DataController {
             let totalCollateralInUsdc = 0;
             let totalLoansInUsdc = 0;
             for (let i = 0; i < vaults.length; i++) {
-                const driftUser = new DriftUser(vaults[i].account.owner, this.connection, this.driftClient!, driftUsers[i]);
+                const driftUser = new DriftUser(vaults[i].account.owner, this.connection, driftClient, driftUsers[i]);
                 totalCollateralInUsdc += driftUser.getTotalCollateralValue().toNumber();
                 totalLoansInUsdc += driftUser.getTotalLiabilityValue().toNumber();
             }

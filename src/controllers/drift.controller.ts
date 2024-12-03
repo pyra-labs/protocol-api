@@ -7,37 +7,22 @@ import { DriftUser } from "../model/driftUser.js";
 import { PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { SUPPORTED_DRIFT_MARKET_INDICES, SUPPORTED_DRIFT_MARKETS } from "../config/constants.js";
+import { DriftClientService } from "../services/driftClientService.js";
 
 export class DriftController {
     private connection: Connection;
-    private driftClient: DriftClient;
-
-    private initPromise: Promise<boolean>;
+    private driftClientPromise: Promise<DriftClient>;
 
     private rateCache: Record<string, { depositRate: number; borrowRate: number; timestamp: number }> = {};
     private RATE_CACHE_DURATION = 60_000;
 
     constructor() {
         this.connection = new Connection(config.RPC_URL);
-
-        const wallet = new Wallet(Keypair.generate());
-        this.driftClient = new DriftClient({
-            connection: this.connection,
-            wallet: wallet,
-            env: 'mainnet-beta',
-            userStats: false,
-            perpMarketIndexes: [],
-            spotMarketIndexes: SUPPORTED_DRIFT_MARKETS,
-            accountSubscription: {
-                type: 'websocket',
-                commitment: "confirmed"
-            }
-        });
-        this.initPromise = this.driftClient.subscribe();
+        this.driftClientPromise = DriftClientService.getDriftClient();
     }
 
-    private async getUser(address: string) {
-        const driftUser = new DriftUser(new PublicKey(address), this.connection, this.driftClient!);
+    private async getUser(address: string, driftClient: DriftClient) {
+        const driftUser = new DriftUser(new PublicKey(address), this.connection, driftClient);
         await retryRPCWithBackoff(
             async () => driftUser.initialize(),
             3,
@@ -75,7 +60,7 @@ export class DriftController {
 
     public getRate = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            await this.initPromise;
+            const driftClient = await this.driftClientPromise;
 
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
@@ -87,7 +72,7 @@ export class DriftController {
 
             if (uncachedMarketIndices.length > 0) {
                 const promises = uncachedMarketIndices.map(async (index) => {
-                    const spotMarket = await this.driftClient.getSpotMarketAccount(index);
+                    const spotMarket = await driftClient.getSpotMarketAccount(index);
                     if (!spotMarket) throw new HttpException(400, `Could not find spot market for index ${index}`);
                 
                     const depositRateBN = calculateDepositRate(spotMarket);
@@ -117,12 +102,12 @@ export class DriftController {
 
     public getBalance = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            await this.initPromise;
+            const driftClient = await this.driftClientPromise;
 
             const address = this.validateAddress(req.query.address as string);
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
-            const driftUser = await this.getUser(address).catch(() => {
+            const driftUser = await this.getUser(address, driftClient).catch(() => {
                 throw new HttpException(400, "User not found");
             });
 
@@ -138,12 +123,12 @@ export class DriftController {
 
     public getWithdrawLimit = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            await this.initPromise;
+            const driftClient = await this.driftClientPromise;
 
             const address = this.validateAddress(req.query.address as string);
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
-            const driftUser = await this.getUser(address).catch(() => {
+            const driftUser = await this.getUser(address, driftClient).catch(() => {
                 throw new HttpException(400, "User not found");
             });
 
@@ -159,11 +144,11 @@ export class DriftController {
 
     public getHealth = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            await this.initPromise;
+            const driftClient = await this.driftClientPromise;
 
             const address = this.validateAddress(req.query.address as string);
 
-            const driftUser = await this.getUser(address).catch(() => {
+            const driftUser = await this.getUser(address, driftClient).catch(() => {
                 throw new HttpException(400, "User not found");
             });
 
