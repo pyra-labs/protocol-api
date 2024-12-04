@@ -98,3 +98,145 @@ describe("Test /data/tvl", () => {
         expect(body.net).toBeGreaterThan(0);
     });
 })
+
+describe("Test /data/waitlist", () => {
+    const routeUrl = `${baseUrl}/waitlist`;
+
+    it("Should successfully add to the waitlist", async () => {
+        const response = await fetch(routeUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: "iarla@quartzpay.io",
+                name: "Iarla Crewe",
+                country: "Ireland",
+                newsletter: "true"
+            })
+        });
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toHaveProperty("message");
+        expect(body.message).toBe("Email added to waitlist");
+    });
+
+    it("Should do nothing if the email is already in the waitlist", async () => {
+        const response = await fetch(routeUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: "ken.crewe@gmail.com",
+                name: "Ken Crewe",
+                country: "Ireland",
+                newsletter: "true"
+            })
+        });
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toHaveProperty("message");
+        expect(body.message).toBe("Email already exists in waitlist");
+    })
+
+    it("Should return 400 if the email is invalid", async () => {
+        const response = await fetch(routeUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: "notanemail",
+                name: "Iarla Crewe",
+                country: "Ireland",
+                newsletter: "true"
+            })
+        });
+
+        expect(response.status).toBe(400);
+    })
+
+    it("Should return 400 if the email is missing", async () => {
+        const response = await fetch(routeUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                name: "Iarla Crewe",
+                country: "Ireland",
+                newsletter: "true"
+            })
+        });
+
+        expect(response.status).toBe(400);
+    })
+
+    it("Should return 400 if the name is missing", async () => {
+        const response = await fetch(routeUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: "iarla@quartzpay.io",
+                country: "Ireland",
+                newsletter: "true"
+            })
+        });
+
+        expect(response.status).toBe(400);
+    })
+
+    it("Should return 400 if the country is missing", async () => {
+        const response = await fetch(routeUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: "iarla@quartzpay.io",
+                name: "Iarla Crewe",
+                newsletter: "true"
+            })
+        });
+
+        expect(response.status).toBe(400);
+    })
+
+    it("Should return 400 if the newsletter is missing", async () => {
+        const response = await fetch(routeUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: "iarla@quartzpay.io",
+                name: "Iarla Crewe",
+                country: "Ireland",
+            })
+        });
+
+        expect(response.status).toBe(400);
+    })
+
+    it("Should return 400 if the newsletter is invalid", async () => {
+        const response = await fetch(routeUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: "iarla@quartzpay.io",
+                name: "Iarla Crewe",
+                country: "Ireland",
+                newsletter: "foo"
+            })
+        });
+
+        expect(response.status).toBe(400);
+    })
+})

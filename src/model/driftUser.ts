@@ -202,7 +202,7 @@ export class DriftUser {
 		const totalCollateral = this.getTotalCollateralValue(marginCategory, true);
 		const marginRequirement =
 			marginCategory === 'Initial'
-				? this.getMarginRequirement('Initial', undefined, false, true,preventAutoRepay)
+				? this.getMarginRequirement('Initial', undefined, false, true, preventAutoRepay)
 				: this.getMaintenanceMarginRequirement();
 		const freeCollateral = totalCollateral.sub(marginRequirement);
 		return freeCollateral.gte(ZERO) ? freeCollateral : ZERO;
