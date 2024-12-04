@@ -21,6 +21,12 @@ const envSchema = z.object({
     EMAIL_PORT: z.coerce.number().min(0),
     EMAIL_USER: z.string().email(),
     EMAIL_PASSWORD: z.string(),
+    GOOGLE_CLIENT_EMAIL: z.string().email(),
+    GOOGLE_PROJECT_ID: z.string(),
+    GOOGLE_PRIVATE_KEY: z.string(),
+    GOOGLE_SPREADSHEET_ID: z.string(),
+    WEBFLOW_ACCESS_TOKEN: z.string(),
+    BREVO_API_KEY: z.string(),
 });
 
 const config = envSchema.parse(process.env);
