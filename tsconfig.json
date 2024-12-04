@@ -16,7 +16,11 @@
 
     /* Type Checking */
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+
+    /* Performance */
+    "incremental": true,
+    "tsBuildInfoFile": "./build/.tsbuildinfo"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "build"]
