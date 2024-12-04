@@ -175,11 +175,11 @@ export class DataController {
                     }
                 }
             );
-            if (!checkResponse.ok) throw new Error('Failed to check spreadsheet');
+            if (!checkResponse.ok) throw new Error('Failed to find spreadsheet');
             const data = await checkResponse.json();
             const rows = data.values?.slice(1);
     
-            if (!rows || rows.length === 0) throw new Error("No rows found");
+            if (!rows || rows.length === 0) throw new Error("Failed to fetch data from spreadsheet");
             if (rows.some((row: string[]) => row[0] === email)) {
                 res.status(200).json({ message: "Email already exists in waitlist" });
                 return;
@@ -202,7 +202,7 @@ export class DataController {
             if (!appendResponse.ok) throw new Error('Failed to update spreadsheet');
 
             // Update Webflow waitlist count
-            const newWaitlistCount = 100;//rows.length + 1;
+            const newWaitlistCount = rows.length + 1;
             const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });
             await webflowClient.collections.items.updateItemLive("67504dd7fde047775f88c371", "67504dd7fde047775f88c3aa", {
                 id: "67504dd7fde047775f88c3aa",
