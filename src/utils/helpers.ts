@@ -1,6 +1,7 @@
 import { BN, DRIFT_PROGRAM_ID, PublicKey } from "@drift-labs/sdk";
 import { Logger } from "winston";
 import { QUARTZ_PROGRAM_ID, QUARTZ_HEALTH_BUFFER_PERCENTAGE } from "../config/constants.js";
+import config from "../config/config.js";
 
 export function bnToDecimal(bn: BN, decimalPlaces: number): number {
     const decimalFactor = Math.pow(10, decimalPlaces);
@@ -66,6 +67,64 @@ export const retryRPCWithBackoff = async <T>(
         }
     }
     throw lastError;
+}
+
+export const getGoogleAccessToken = async () => {
+    const jwtToken = JSON.stringify({
+        iss: config.GOOGLE_CLIENT_EMAIL,
+        scope: 'https://www.googleapis.com/auth/spreadsheets',
+        aud: 'https://oauth2.googleapis.com/token',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000)
+    });
+
+    const signedJwt = await signJwt(jwtToken, config.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"));
+    
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            assertion: signedJwt,
+        }),
+    });
+
+    const data = await response.json();
+    return data.access_token;
+}
+
+const signJwt = async (token: string, privateKey: string): Promise<string> => {
+    const encoder = new TextEncoder();
+    const header = { alg: 'RS256', typ: 'JWT' };
+    
+    const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
+    const encodedPayload = Buffer.from(token).toString('base64url');
+    const signInput = `${encodedHeader}.${encodedPayload}`;
+
+    const pemContents = privateKey
+        .replace(/-----BEGIN PRIVATE KEY-----/, '')
+        .replace(/-----END PRIVATE KEY-----/, '')
+        .replace(/\n/g, '');
+    const pemArrayBuffer = new Uint8Array(Buffer.from(pemContents, 'base64')).buffer;
+
+    const key = await crypto.subtle.importKey(
+        'pkcs8',
+        pemArrayBuffer,
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+
+    const signature = await crypto.subtle.sign(
+        'RSASSA-PKCS1-v1_5',
+        key,
+        encoder.encode(signInput)
+    );
+
+    const encodedSignature = Buffer.from(signature).toString('base64url');
+    return `${signInput}.${encodedSignature}`;
 }
 
 export const getTimestamp = () => {

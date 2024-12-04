@@ -83,6 +83,10 @@ describe("Test /data/tvl", () => {
         const response = await fetch(routeUrl);
         const body = await response.json();
 
+        console.log(body);
+
+        await new Promise(resolve => setTimeout(resolve, 10_000));
+
         expect(response.status).toBe(200);
 
         expect(body).toHaveProperty("collateral");

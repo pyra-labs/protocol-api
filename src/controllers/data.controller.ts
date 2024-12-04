@@ -6,12 +6,11 @@ import config from "../config/config.js";
 import quartzIdl from "../idl/quartz.json" with { type: "json" };
 import { Quartz } from "../types/quartz.js";
 import { BASE_UNITS_PER_USDC, QUARTZ_PROGRAM_ID, SUPPORTED_DRIFT_MARKETS } from "../config/constants.js";
-import { getDriftUser, getTimestamp, retryRPCWithBackoff } from "../utils/helpers.js";
+import { getDriftUser, getGoogleAccessToken, getTimestamp, retryRPCWithBackoff } from "../utils/helpers.js";
 import { DriftUser } from "../model/driftUser.js";
 import { DriftClient, fetchUserAccountsUsingKeys, UserAccount } from "@drift-labs/sdk";
 import { DriftClientService } from "../services/driftClientService.js";
 import { WebflowClient } from "webflow-api";
-import { google } from "googleapis";
 
 export class DataController {
     private connection: Connection;
@@ -165,35 +164,42 @@ export class DataController {
         const newsletter = (newsletterString === "true");
 
         try {
-            const gAuth = new google.auth.GoogleAuth({
-                credentials: {
-                    client_email: config.GOOGLE_CLIENT_EMAIL,
-                    private_key: config.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-                    project_id: config.GOOGLE_PROJECT_ID
-                },
-                scopes: ["https://www.googleapis.com/auth/spreadsheets"]
-            });
-            const sheets = google.sheets({ version: "v4", auth: gAuth });
+            const accessToken = await getGoogleAccessToken();
             
-            // // Ensure waitlist is not already present
-            // const response = await sheets.spreadsheets.values.get({
-            //     spreadsheetId: config.GOOGLE_SPREADSHEET_ID,
-            //     range: "waitlist!B:B"
-            // });
-            // const rows = response.data.values?.slice(1);
-            // if (!rows || rows.length === 0) throw new Error("No rows found");
-            // if (rows.some(row => row[0] === email)) {
-            //     res.status(200).json({ message: "Email already exists in waitlist" });
-            //     return;
-            // }
+            // Ensure waitlist is not already present
+            const checkResponse = await fetch(
+                `https://sheets.googleapis.com/v4/spreadsheets/${config.GOOGLE_SPREADSHEET_ID}/values/waitlist!B:B`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                    }
+                }
+            );
+            if (!checkResponse.ok) throw new Error('Failed to check spreadsheet');
+            const data = await checkResponse.json();
+            const rows = data.values?.slice(1);
+    
+            if (!rows || rows.length === 0) throw new Error("No rows found");
+            if (rows.some((row: string[]) => row[0] === email)) {
+                res.status(200).json({ message: "Email already exists in waitlist" });
+                return;
+            }
 
-            // // Append to waitlist
-            // await sheets.spreadsheets.values.append({
-            //     spreadsheetId: config.GOOGLE_SPREADSHEET_ID,
-            //     range: "waitlist!A:F",
-            //     valueInputOption: "USER_ENTERED",
-            //     requestBody: { values: [[getTimestamp(), email, name, country, newsletter ? "TRUE" : "FALSE", "1"]] }
-            // });
+            // Append to waitlist
+            const appendResponse = await fetch(
+                `https://sheets.googleapis.com/v4/spreadsheets/${config.GOOGLE_SPREADSHEET_ID}/values/waitlist!A:F:append?valueInputOption=USER_ENTERED`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        values: [[getTimestamp(), email, name, country, newsletter ? "TRUE" : "FALSE", "1"]]
+                    })
+                }
+            );
+            if (!appendResponse.ok) throw new Error('Failed to update spreadsheet');
 
             // Update Webflow waitlist count
             const newWaitlistCount = 100;//rows.length + 1;
