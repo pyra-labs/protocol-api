@@ -11,6 +11,7 @@ import { DriftUser } from "../model/driftUser.js";
 import { DriftClient, fetchUserAccountsUsingKeys, UserAccount } from "@drift-labs/sdk";
 import { DriftClientService } from "../services/driftClientService.js";
 import { WebflowClient } from "webflow-api";
+import { google } from "googleapis";
 
 export class DataController {
     private connection: Connection;
@@ -164,15 +165,15 @@ export class DataController {
         const newsletter = (newsletterString === "true");
 
         try {
-            // const gAuth = new google.auth.GoogleAuth({
-            //     credentials: {
-            //         client_email: config.GOOGLE_CLIENT_EMAIL,
-            //         private_key: config.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-            //         project_id: config.GOOGLE_PROJECT_ID
-            //     },
-            //     scopes: ["https://www.googleapis.com/auth/spreadsheets"]
-            // });
-            // const sheets = google.sheets({ version: "v4", auth: gAuth });
+            const gAuth = new google.auth.GoogleAuth({
+                credentials: {
+                    client_email: config.GOOGLE_CLIENT_EMAIL,
+                    private_key: config.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+                    project_id: config.GOOGLE_PROJECT_ID
+                },
+                scopes: ["https://www.googleapis.com/auth/spreadsheets"]
+            });
+            const sheets = google.sheets({ version: "v4", auth: gAuth });
             
             // // Ensure waitlist is not already present
             // const response = await sheets.spreadsheets.values.get({
