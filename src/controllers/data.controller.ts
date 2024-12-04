@@ -146,87 +146,87 @@ export class DataController {
         }
     }
     
-    public addWaitlist = async (req: Request, res: Response, next: NextFunction) => {
-        const email = req.body.email as string;
-        if (!email) return next(new HttpException(400, "Email is required"));
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return next(new HttpException(400, "Invalid email"));
+    // public addWaitlist = async (req: Request, res: Response, next: NextFunction) => {
+    //     const email = req.body.email as string;
+    //     if (!email) return next(new HttpException(400, "Email is required"));
+    //     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return next(new HttpException(400, "Invalid email"));
 
-        const name = req.body.name as string;
-        if (!name) return next(new HttpException(400, "Name is required"));
+    //     const name = req.body.name as string;
+    //     if (!name) return next(new HttpException(400, "Name is required"));
 
-        const country = req.body.country as string;
-        if (!country) return next(new HttpException(400, "Country is required"));
+    //     const country = req.body.country as string;
+    //     if (!country) return next(new HttpException(400, "Country is required"));
 
-        const newsletterString = req.body.newsletter as string;
-        if (!newsletterString) return next(new HttpException(400, "Newsletter is required"));
-        if (newsletterString !== "true" && newsletterString !== "false") {
-            return next(new HttpException(400, "Newsletter must be true or false"));
-        }
-        const newsletter = (newsletterString === "true");
+    //     const newsletterString = req.body.newsletter as string;
+    //     if (!newsletterString) return next(new HttpException(400, "Newsletter is required"));
+    //     if (newsletterString !== "true" && newsletterString !== "false") {
+    //         return next(new HttpException(400, "Newsletter must be true or false"));
+    //     }
+    //     const newsletter = (newsletterString === "true");
 
-        try {
-            const gAuth = new google.auth.GoogleAuth({
-                credentials: {
-                    client_email: config.GOOGLE_CLIENT_EMAIL,
-                    private_key: config.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-                    project_id: config.GOOGLE_PROJECT_ID
-                },
-                scopes: ["https://www.googleapis.com/auth/spreadsheets"]
-            });
-            const sheets = google.sheets({ version: "v4", auth: gAuth });
+    //     try {
+    //         const gAuth = new google.auth.GoogleAuth({
+    //             credentials: {
+    //                 client_email: config.GOOGLE_CLIENT_EMAIL,
+    //                 private_key: config.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    //                 project_id: config.GOOGLE_PROJECT_ID
+    //             },
+    //             scopes: ["https://www.googleapis.com/auth/spreadsheets"]
+    //         });
+    //         const sheets = google.sheets({ version: "v4", auth: gAuth });
             
-            // Ensure waitlist is not already present
-            const response = await sheets.spreadsheets.values.get({
-                spreadsheetId: config.GOOGLE_SPREADSHEET_ID,
-                range: "waitlist!B:B"
-            });
-            const rows = response.data.values?.slice(1);
-            if (!rows || rows.length === 0) throw new Error("No rows found");
-            if (rows.some(row => row[0] === email)) {
-                res.status(200).json({ message: "Email already exists in waitlist" });
-                return;
-            }
+    //         // Ensure waitlist is not already present
+    //         const response = await sheets.spreadsheets.values.get({
+    //             spreadsheetId: config.GOOGLE_SPREADSHEET_ID,
+    //             range: "waitlist!B:B"
+    //         });
+    //         const rows = response.data.values?.slice(1);
+    //         if (!rows || rows.length === 0) throw new Error("No rows found");
+    //         if (rows.some(row => row[0] === email)) {
+    //             res.status(200).json({ message: "Email already exists in waitlist" });
+    //             return;
+    //         }
 
-            // Append to waitlist
-            await sheets.spreadsheets.values.append({
-                spreadsheetId: config.GOOGLE_SPREADSHEET_ID,
-                range: "waitlist!A:F",
-                valueInputOption: "USER_ENTERED",
-                requestBody: { values: [[getTimestamp(), email, name, country, newsletter ? "TRUE" : "FALSE", "1"]] }
-            });
+    //         // Append to waitlist
+    //         await sheets.spreadsheets.values.append({
+    //             spreadsheetId: config.GOOGLE_SPREADSHEET_ID,
+    //             range: "waitlist!A:F",
+    //             valueInputOption: "USER_ENTERED",
+    //             requestBody: { values: [[getTimestamp(), email, name, country, newsletter ? "TRUE" : "FALSE", "1"]] }
+    //         });
 
-            // Update Webflow waitlist count
-            const newWaitlistCount = rows.length + 1;
-            const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });
-            await webflowClient.collections.items.updateItemLive("67504dd7fde047775f88c371", "67504dd7fde047775f88c3aa", {
-                id: "67504dd7fde047775f88c3aa",
-                fieldData: {
-                    name: "Waitlist",
-                    slug: "waitlist",
-                    count: newWaitlistCount
-                }
-            });
+    //         // Update Webflow waitlist count
+    //         const newWaitlistCount = rows.length + 1;
+    //         const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });
+    //         await webflowClient.collections.items.updateItemLive("67504dd7fde047775f88c371", "67504dd7fde047775f88c3aa", {
+    //             id: "67504dd7fde047775f88c3aa",
+    //             fieldData: {
+    //                 name: "Waitlist",
+    //                 slug: "waitlist",
+    //                 count: newWaitlistCount
+    //             }
+    //         });
             
-            // Send welcome email through Brevo
-            await fetch("https://api.brevo.com/v3/smtp/email", {
-                method: 'POST',
-                headers: {
-                    accept: 'application/json',
-                    'content-type': 'application/json',
-                    'api-key': config.BREVO_API_KEY
-                },
-                body: JSON.stringify({
-                    templateId: 3,
-                    to: [{ email, name }],
-                    params: {
-                        "NAME": name
-                    }
-                })
-            });
+    //         // Send welcome email through Brevo
+    //         await fetch("https://api.brevo.com/v3/smtp/email", {
+    //             method: 'POST',
+    //             headers: {
+    //                 accept: 'application/json',
+    //                 'content-type': 'application/json',
+    //                 'api-key': config.BREVO_API_KEY
+    //             },
+    //             body: JSON.stringify({
+    //                 templateId: 3,
+    //                 to: [{ email, name }],
+    //                 params: {
+    //                     "NAME": name
+    //                 }
+    //             })
+    //         });
 
-            res.status(200).json({ message: "Email added to waitlist" });
-        } catch (error) {
-            next(error);
-        }
-    }
+    //         res.status(200).json({ message: "Email added to waitlist" });
+    //     } catch (error) {
+    //         next(error);
+    //     }
+    // }
 }
