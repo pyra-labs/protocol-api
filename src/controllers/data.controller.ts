@@ -156,12 +156,10 @@ export class DataController {
         const country = req.body.country as string;
         if (!country) return next(new HttpException(400, "Country is required"));
 
-        const newsletterString = req.body.newsletter as string;
-        if (!newsletterString) return next(new HttpException(400, "Newsletter is required"));
-        if (newsletterString !== "true" && newsletterString !== "false") {
-            return next(new HttpException(400, "Newsletter must be true or false"));
+        const newsletter = req.body.newsletter;
+        if (newsletter === undefined || newsletter === null) {
+            return next(new HttpException(400, "Newsletter is required"));
         }
-        const newsletter = (newsletterString === "true");
 
         try {
             const accessToken = await getGoogleAccessToken();
