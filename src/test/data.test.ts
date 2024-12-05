@@ -83,10 +83,6 @@ describe("Test /data/tvl", () => {
         const response = await fetch(routeUrl);
         const body = await response.json();
 
-        console.log(body);
-
-        await new Promise(resolve => setTimeout(resolve, 10_000));
-
         expect(response.status).toBe(200);
 
         expect(body).toHaveProperty("collateral");
@@ -106,7 +102,7 @@ describe("Test /data/tvl", () => {
 describe("Test /data/waitlist", () => {
     const routeUrl = `${baseUrl}/waitlist`;
 
-    it("Should successfully add to the waitlist", async () => {
+    it("Should successfully add to the waitlist with newsletter", async () => {
         const response = await fetch(routeUrl, {
             method: "POST",
             headers: {
@@ -116,7 +112,27 @@ describe("Test /data/waitlist", () => {
                 email: "iarla@quartzpay.io",
                 name: "Iarla Crewe",
                 country: "Ireland",
-                newsletter: "true"
+                newsletter: true
+            })
+        });
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toHaveProperty("message");
+        expect(body.message).toBe("Email added to waitlist");
+    });
+
+    it("Should successfully add to the waitlist without newsletter", async () => {
+        const response = await fetch(routeUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: "diego@quartzpay.io",
+                name: "Diego Garcia",
+                country: "Ireland",
+                newsletter: false
             })
         });
         const body = await response.json();
@@ -136,7 +152,7 @@ describe("Test /data/waitlist", () => {
                 email: "ken.crewe@gmail.com",
                 name: "Ken Crewe",
                 country: "Ireland",
-                newsletter: "true"
+                newsletter: true
             })
         });
         const body = await response.json();
@@ -156,7 +172,7 @@ describe("Test /data/waitlist", () => {
                 email: "notanemail",
                 name: "Iarla Crewe",
                 country: "Ireland",
-                newsletter: "true"
+                newsletter: true
             })
         });
 
@@ -172,7 +188,7 @@ describe("Test /data/waitlist", () => {
             body: JSON.stringify({
                 name: "Iarla Crewe",
                 country: "Ireland",
-                newsletter: "true"
+                newsletter: true
             })
         });
 
@@ -188,7 +204,7 @@ describe("Test /data/waitlist", () => {
             body: JSON.stringify({
                 email: "iarla@quartzpay.io",
                 country: "Ireland",
-                newsletter: "true"
+                newsletter: true
             })
         });
 
@@ -204,7 +220,7 @@ describe("Test /data/waitlist", () => {
             body: JSON.stringify({
                 email: "iarla@quartzpay.io",
                 name: "Iarla Crewe",
-                newsletter: "true"
+                newsletter: true
             })
         });
 
@@ -237,10 +253,31 @@ describe("Test /data/waitlist", () => {
                 email: "iarla@quartzpay.io",
                 name: "Iarla Crewe",
                 country: "Ireland",
-                newsletter: "foo"
+                newsletter: "true"
             })
         });
 
         expect(response.status).toBe(400);
+    })
+})
+
+describe("Test /data/update-website-data", () => {
+    const routeUrl = `${baseUrl}/update-website-data`;
+
+    it("Should update the website data", async () => {
+        const response = await fetch(routeUrl, {
+            method: "PUT"
+        });
+        const body = await response.json();
+        
+        expect(response.status).toBe(200);
+
+        expect(body).toHaveProperty("yield");
+        expect(typeof body.yield).toBe("number");
+        expect(body.yield).toBeGreaterThan(0);
+
+        expect(body).toHaveProperty("valueLost");
+        expect(typeof body.valueLost).toBe("number");
+        expect(body.valueLost).toBeGreaterThan(0);
     })
 })

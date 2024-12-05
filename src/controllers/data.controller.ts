@@ -5,12 +5,13 @@ import { Connection, Keypair } from "@solana/web3.js";
 import config from "../config/config.js";
 import quartzIdl from "../idl/quartz.json" with { type: "json" };
 import { Quartz } from "../types/quartz.js";
-import { BASE_UNITS_PER_USDC, QUARTZ_PROGRAM_ID, SUPPORTED_DRIFT_MARKETS } from "../config/constants.js";
-import { getDriftUser, getGoogleAccessToken, getTimestamp, retryRPCWithBackoff } from "../utils/helpers.js";
+import { BASE_UNITS_PER_USDC, DRIFT_MARKET_INDEX_USDC, QUARTZ_PROGRAM_ID, SUPPORTED_DRIFT_MARKETS, YIELD_CUT } from "../config/constants.js";
+import { bnToDecimal, getDriftUser, getGoogleAccessToken, getTimestamp, retryRPCWithBackoff } from "../utils/helpers.js";
 import { DriftUser } from "../model/driftUser.js";
-import { DriftClient, fetchUserAccountsUsingKeys, UserAccount } from "@drift-labs/sdk";
+import { calculateDepositRate, DriftClient, fetchUserAccountsUsingKeys, UserAccount } from "@drift-labs/sdk";
 import { DriftClientService } from "../services/driftClientService.js";
 import { WebflowClient } from "webflow-api";
+import { DriftController } from "./drift.controller.js";
 
 export class DataController {
     private connection: Connection;
@@ -160,6 +161,7 @@ export class DataController {
         if (newsletter === undefined || newsletter === null) {
             return next(new HttpException(400, "Newsletter is required"));
         }
+        if (typeof newsletter !== "boolean") return next(new HttpException(400, "Newsletter must be a boolean"));
 
         try {
             const accessToken = await getGoogleAccessToken();
@@ -229,6 +231,85 @@ export class DataController {
             });
 
             res.status(200).json({ message: "Email added to waitlist" });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    public updateWebsiteData = async (req: Request, res: Response, next: NextFunction) => {
+        const driftClient = await this.driftClientPromise;
+        const usdLost = 8592500000;
+        const assetsLost = {
+            "bitcoin": 1226903,
+            "litecoin": 56733,
+            "nem": 9000000,
+            "nano": 17000000,
+            "ripple": 48100000,
+            "eos": 3000000,
+            "ethereum": 11543,
+            "cardano": 2500000,
+            "tether": 20800000
+        };
+
+        try {   
+            const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });
+
+            // Get USDC deposit rate
+            const usdcSpotMarket = await driftClient.getSpotMarketAccount(DRIFT_MARKET_INDEX_USDC);
+            if (!usdcSpotMarket) throw new HttpException(400, "Failed to fetch spot market");
+
+            const depositRateBN = calculateDepositRate(usdcSpotMarket);
+            const depositRate = bnToDecimal(depositRateBN, 6);
+            if (depositRate <= 0) throw new Error("Invalid rate fetched");
+
+            const apyAfterCut = 100 * depositRate * (1 - YIELD_CUT);
+            const apyAfterCutRounded = Math.round((apyAfterCut + Number.EPSILON) * 100) / 100;
+
+            // Update USDC deposit rate
+            await webflowClient.collections.items.updateItemLive("67504dd7fde047775f88c371", "67504dd7fde047775f88c3be", {
+                id: "67504dd7fde047775f88c3be",
+                fieldData: {
+                    name: "Yield",
+                    slug: "yield",
+                    count: apyAfterCutRounded
+                }
+            });
+
+            // Get funds lost to custodians
+            const ids = Object.keys(assetsLost).join(',');
+            const mockReq = { query: { ids } } as unknown as Request;
+            let prices: Record<string, number> = {};
+            await new Promise<void>((resolve) => {
+                const mockRes = {
+                    status: () => ({
+                        json: (data: Record<string, number>) => {
+                            prices = data;
+                            resolve();
+                        }
+                    })
+                } as unknown as Response;
+                this.getPrice(mockReq, mockRes, next);
+            });
+
+            let totalValueLost = usdLost;
+            for (const [coin, amount] of Object.entries(assetsLost)) {
+                const price = prices[coin];
+                const value = price * amount;
+                totalValueLost += value;
+            }
+            const totalValueLostBillions = Math.trunc(totalValueLost / 1_000_000_000);
+
+            // Update funds lost to custodians
+            await webflowClient.collections.items.updateItemLive("67504dd7fde047775f88c371", "67504dd7fde047775f88c3d0", {
+                id: "67504dd7fde047775f88c3d0",
+                fieldData: {
+                    name: "Value Lost",
+                    slug: "value-lost",
+                    count: totalValueLostBillions
+                }
+            });
+
+            res.status(200).json({ yield: apyAfterCutRounded, valueLost: totalValueLostBillions });
         } catch (error) {
             next(error);
         }
