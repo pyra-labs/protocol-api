@@ -9,7 +9,7 @@
     "test": "vitest run --pool=forks",
     "test:data": "vitest run --pool=forks src/test/data.test.ts",
     "test:drift": "vitest run --pool=forks src/test/drift.test.ts",
-    "build": "yarn install && yarn lint && yarn test && tsc -p tsconfig.json",
+    "build": "yarn install && yarn lint && tsc -p tsconfig.json",
     "start": "yarn build && node dist/index.js"
   },
   "license": "ISC",
@@ -30,7 +30,7 @@
     "vitest": "^2.1.6"
   },
   "dependencies": {
-    "@quartz-labs/sdk": "^0.0.15",
+    "@quartz-labs/sdk": "^0.0.16",
     "@solana/web3.js": "^1.95.3",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",

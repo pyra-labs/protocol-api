@@ -1,4 +1,4 @@
-import { App } from "./src/app";
+import { App } from "./src/app.ts";
 import { DataRoute } from "./src/routes/data.routes";
 import { DriftRoute } from "./src/routes/drift.routes";
 
