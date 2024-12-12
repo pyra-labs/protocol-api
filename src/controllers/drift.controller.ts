@@ -103,7 +103,9 @@ export class DriftController {
         try {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
             const address = this.validateAddress(req.query.address as string);
-            const user = await this.getQuartzUser(address);
+            const user = await this.getQuartzUser(address).catch(() => {
+                throw new HttpException(400, "Address is not a Quartz user");
+            });
 
             const balances = await Promise.all(
                 marketIndices.map(index => user.getTokenBalance(index))
@@ -119,7 +121,9 @@ export class DriftController {
         try {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
             const address = this.validateAddress(req.query.address as string);
-            const user = await this.getQuartzUser(address);
+            const user = await this.getQuartzUser(address).catch(() => {
+                throw new HttpException(400, "Address is not a Quartz user");
+            });
 
             const withdrawLimits = await Promise.all(
                 marketIndices.map(index => user.getWithdrawalLimit(index))
@@ -134,7 +138,9 @@ export class DriftController {
     public getHealth = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const address = this.validateAddress(req.query.address as string);
-            const user = await this.getQuartzUser(address);
+            const user = await this.getQuartzUser(address).catch(() => {
+                throw new HttpException(400, "Address is not a Quartz user");
+            });
             const health = user.getHealth();
             res.status(200).json(health);
         } catch (error) {
