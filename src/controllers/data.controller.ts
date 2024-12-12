@@ -1,35 +1,22 @@
-import { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { HttpException } from "../utils/errors.js";
-import { AnchorProvider, Idl, Program, setProvider, Wallet } from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";
 import config from "../config/config.js";
-import quartzIdl from "../idl/quartz.json" with { type: "json" };
-import { Quartz } from "../types/quartz.js";
-import { BASE_UNITS_PER_USDC, DRIFT_MARKET_INDEX_USDC, QUARTZ_PROGRAM_ID, SUPPORTED_DRIFT_MARKETS, YIELD_CUT } from "../config/constants.js";
-import { bnToDecimal, getDriftUser, getGoogleAccessToken, getTimestamp, retryRPCWithBackoff } from "../utils/helpers.js";
-import { DriftUser } from "../model/driftUser.js";
-import { calculateDepositRate, DriftClient, fetchUserAccountsUsingKeys, UserAccount } from "@drift-labs/sdk";
-import { DriftClientService } from "../services/driftClientService.js";
+import { BASE_UNITS_PER_USDC, YIELD_CUT } from "../config/constants.js";
+import { bnToDecimal, getGoogleAccessToken, getTimestamp, retryRPCWithBackoff } from "../utils/helpers.js";
 import { WebflowClient } from "webflow-api";
-import { DriftController } from "./drift.controller.js";
+import { DRIFT_MARKET_INDEX_USDC, QuartzClient, Wallet } from "@quartz-labs/sdk";
 
 export class DataController {
-    private connection: Connection;
-    private program: Program<Quartz>;
-    private driftClientPromise: Promise<DriftClient>;
+    private quartzClientPromise: Promise<QuartzClient>;
 
     private priceCache: Record<string, { price: number; timestamp: number }> = {};
     private PRICE_CACHE_DURATION = 60_000;
 
     constructor() {
-        this.connection = new Connection(config.RPC_URL);
+        const connection = new Connection(config.RPC_URL);
         const wallet = new Wallet(Keypair.generate());
-
-        const provider = new AnchorProvider(this.connection, wallet, { commitment: "confirmed" });
-        setProvider(provider);
-        this.program = new Program(quartzIdl as Idl, QUARTZ_PROGRAM_ID, provider) as unknown as Program<Quartz>;
-
-        this.driftClientPromise = DriftClientService.getDriftClient();
+        this.quartzClientPromise = QuartzClient.fetchClient(connection, wallet);
     }
 
     public getPrice = async (req: Request, res: Response, next: NextFunction) => {
@@ -53,14 +40,15 @@ export class DataController {
                     return next(new HttpException(400, "Failed to fetch data from CoinGecko"));
                 }
 
-                const data = await response.json();
+                const data = (await response.json()) as Record<string, { usd: number }>;
 
-                Object.keys(data).forEach(id => {
+                for (const id of Object.keys(data)) {
+                    if (!data[id]) throw new Error(`Invalid data fetched for ${id}`);
                     this.priceCache[id] = {
                         price: data[id].usd,
                         timestamp: now
-                    };
-                });
+                    }
+                }
             }
 
             const pricesUsd = idArray.reduce((acc, id) => {
@@ -80,47 +68,36 @@ export class DataController {
         }
     }
 
-    public getUsers = async (req: Request, res: Response, next: NextFunction) => {
+    public getUsers = async (_: Request, res: Response, next: NextFunction) => {
+        const quartzClient = await this.quartzClientPromise;
+
         try {
-            const vaults = await retryRPCWithBackoff(
+            const owners = await retryRPCWithBackoff(
                 async () => {
-                    return await this.program.account.vault.all();
+                    return await quartzClient.getAllQuartzAccountOwnerPubkeys();
                 },
                 3,
                 1_000
             );
 
-            const users = vaults.map(vault => vault.account.owner.toBase58());
-
             res.status(200).json({
-                count: users.length,
-                users: users
+                count: owners.length,
+                users: owners
             });
         } catch (error) {
             next(error);
         }
     }
 
-    public getTVL = async (req: Request, res: Response, next: NextFunction) => {
-        const driftClient = await this.driftClientPromise;
+    public getTVL = async (_: Request, res: Response, next: NextFunction) => {
+        const quartzClient = await this.quartzClientPromise;
 
         try {
-            const [vaults, driftUsers] = await retryRPCWithBackoff(
+            const users = await retryRPCWithBackoff(
                 async () => {
-                    const vaults = await this.program.account.vault.all();
-                    const driftUsers = await fetchUserAccountsUsingKeys(
-                        this.connection, 
-                        driftClient.program, 
-                        vaults.map((vault) => getDriftUser(vault.account.owner))
-                    );
-                    const undefinedIndex = driftUsers.findIndex(user => !user);
-                    if (undefinedIndex !== -1) {
-                        throw new Error(`Failed to fetch drift user for vault ${vaults[undefinedIndex].publicKey.toString()}`);
-                    }
-                    return [
-                        vaults,
-                        driftUsers as UserAccount[]
-                    ]
+                    const owners = await quartzClient.getAllQuartzAccountOwnerPubkeys();
+                    const users = await quartzClient.getMultipleQuartzAccounts(owners);
+                    return users;
                 },
                 3,
                 1_000
@@ -128,10 +105,10 @@ export class DataController {
 
             let totalCollateralInUsdc = 0;
             let totalLoansInUsdc = 0;
-            for (let i = 0; i < vaults.length; i++) {
-                const driftUser = new DriftUser(vaults[i].account.owner, this.connection, driftClient, driftUsers[i]);
-                totalCollateralInUsdc += driftUser.getTotalCollateralValue().toNumber();
-                totalLoansInUsdc += driftUser.getTotalLiabilityValue().toNumber();
+            for (const user of users) {
+                if (!user) continue; // TODO: Remove once deleted Drift users is fixed
+                totalCollateralInUsdc += user.getTotalCollateralValue();
+                totalLoansInUsdc += user.getMaintenanceMarginRequirement();
             }
 
             const baseUnitsToUsd = (baseUnits: number) => Number((baseUnits / BASE_UNITS_PER_USDC).toFixed(2));
@@ -176,7 +153,7 @@ export class DataController {
                 }
             );
             if (!checkResponse.ok) throw new Error('Failed to find spreadsheet');
-            const data = await checkResponse.json();
+            const data = (await checkResponse.json()) as { values?: string[][]};
             const rows = data.values?.slice(1);
     
             if (!rows || rows.length === 0) throw new Error("Failed to fetch data from spreadsheet");
@@ -236,8 +213,9 @@ export class DataController {
         }
     }
 
-    public updateWebsiteData = async (req: Request, res: Response, next: NextFunction) => {
-        const driftClient = await this.driftClientPromise;
+    public updateWebsiteData = async (_: Request, res: Response, next: NextFunction) => {
+        const quartzClient = await this.quartzClientPromise;
+
         const usdLost = 8592500000;
         const assetsLost = {
             "bitcoin": 1226903,
@@ -255,14 +233,11 @@ export class DataController {
             const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });
 
             // Get USDC deposit rate
-            const usdcSpotMarket = await driftClient.getSpotMarketAccount(DRIFT_MARKET_INDEX_USDC);
-            if (!usdcSpotMarket) throw new HttpException(400, "Failed to fetch spot market");
+            const usdcDepositRateBN = await quartzClient.getDepositRate(DRIFT_MARKET_INDEX_USDC);
+            const usdcDepositRate = bnToDecimal(usdcDepositRateBN, 6);
+            if (usdcDepositRate <= 0) throw new Error("Invalid rate fetched");
 
-            const depositRateBN = calculateDepositRate(usdcSpotMarket);
-            const depositRate = bnToDecimal(depositRateBN, 6);
-            if (depositRate <= 0) throw new Error("Invalid rate fetched");
-
-            const apyAfterCut = 100 * depositRate * (1 - YIELD_CUT);
+            const apyAfterCut = 100 * usdcDepositRate * (1 - YIELD_CUT);
             const apyAfterCutRounded = Math.round((apyAfterCut + Number.EPSILON) * 100) / 100;
 
             // Update USDC deposit rate
@@ -294,6 +269,7 @@ export class DataController {
             let totalValueLost = usdLost;
             for (const [coin, amount] of Object.entries(assetsLost)) {
                 const price = prices[coin];
+                if (!price) throw new Error("Price not found");
                 const value = price * amount;
                 totalValueLost += value;
             }

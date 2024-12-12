@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Routes } from "../interfaces/routes.interface.js";
+import type { Routes } from "../interfaces/routes.interface.js";
 import { DriftController } from "../controllers/drift.controller.js";
 
 export class DriftRoute implements Routes {
@@ -12,9 +12,9 @@ export class DriftRoute implements Routes {
     }
 
     private initializeRoutes() {
-        this.router.get(`/rate`, this.driftController.getRate);
-        this.router.get(`/balance`, this.driftController.getBalance);
-        this.router.get(`/withdraw-limit`, this.driftController.getWithdrawLimit);
-        this.router.get(`/health`, this.driftController.getHealth);
+        this.router.get("/rate", this.driftController.getRate);
+        this.router.get("/balance", this.driftController.getBalance);
+        this.router.get("/withdraw-limit", this.driftController.getWithdrawLimit);
+        this.router.get("/health", this.driftController.getHealth);
     }
 }

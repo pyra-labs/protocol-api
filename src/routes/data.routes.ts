@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Routes } from "../interfaces/routes.interface.js";
+import type { Routes } from "../interfaces/routes.interface.js";
 import { DataController } from "../controllers/data.controller.js";
 
 export class DataRoute implements Routes {

@@ -5,16 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "start": "tsc -p tsconfig.json && node build/index.js",
+    "lint": "yarn biome lint --write",
     "test": "vitest run --pool=forks",
     "test:data": "vitest run --pool=forks src/test/data.test.ts",
-    "test:drift": "vitest run --pool=forks src/test/drift.test.ts"
+    "test:drift": "vitest run --pool=forks src/test/drift.test.ts",
+    "build": "yarn install && yarn lint && yarn test && tsc -p tsconfig.json",
+    "start": "yarn build && node dist/index.js"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
-  "description": "",
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@types/body-parser": "^1.19.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
@@ -30,8 +30,7 @@
     "vitest": "^2.1.6"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.29.0",
-    "@drift-labs/sdk": "^2.97.0-beta.8",
+    "@quartz-labs/sdk": "^0.0.14",
     "@solana/web3.js": "^1.95.3",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",
@@ -44,5 +43,9 @@
     "webflow-api": "^3.0.0",
     "winston": "^3.17.0",
     "zod": "^3.23.8"
+  },
+  "resolutions": {
+    "rpc-websockets": "^9.0.2",
+    "@solana/web3.js": "^1.95.8"
   }
 }

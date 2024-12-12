@@ -5,12 +5,12 @@ import hpp from "hpp";
 import { AppLogger } from "./utils/logger.js";
 import helmet from "helmet";
 import { ErrorMiddleware, HttpException } from "./utils/errors.js";
-import { Routes } from "./interfaces/routes.interface.js";
+import type { Routes } from "./interfaces/routes.interface.js";
 
 export class App extends AppLogger {
     public app: express.Application;
     public port: number;
-    public isListening: boolean = false;
+    public isListening = false;
     
     private routes: Routes[];
 
@@ -34,15 +34,15 @@ export class App extends AppLogger {
     }
 
     private configureRoutes() {
-        this.app.get("/", (req, res) => {
+        this.app.get("/", (_, res) => {
             res.status(200).send({result: "ok"});
         })
 
-        this.routes.forEach(route => {
+        for (const route of this.routes) {
             this.app.use(route.path, route.router);
-        });
+        }
 
-        this.app.all("*", (req, res) => {
+        this.app.all("*", () => {
             throw new HttpException(404, "Endpoint not found");
         });
     }

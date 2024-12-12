@@ -1,9 +1,9 @@
-import { NextFunction, Request, Response } from "express";
-import { Logger } from "winston";
+import type { NextFunction, Request, Response } from "express";
+import type { Logger } from "winston";
 
 export class HttpException extends Error {
     public status: number;
-    public message: string;
+    public override message: string;
 
     constructor(status: number, message: string) {
           super(message);
