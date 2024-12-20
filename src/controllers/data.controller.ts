@@ -1,11 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
 import { HttpException } from "../utils/errors.js";
-import { Connection, Keypair } from "@solana/web3.js";
+import { Connection } from "@solana/web3.js";
 import config from "../config/config.js";
 import { BASE_UNITS_PER_USDC, YIELD_CUT } from "../config/constants.js";
 import { bnToDecimal, getGoogleAccessToken, getTimestamp, retryRPCWithBackoff } from "../utils/helpers.js";
 import { WebflowClient } from "webflow-api";
-import { DRIFT_MARKET_INDEX_USDC, QuartzClient, Wallet } from "@quartz-labs/sdk";
+import { DRIFT_MARKET_INDEX_USDC, QuartzClient } from "@quartz-labs/sdk";
 
 export class DataController {
     private quartzClientPromise: Promise<QuartzClient>;
@@ -15,8 +15,7 @@ export class DataController {
 
     constructor() {
         const connection = new Connection(config.RPC_URL);
-        const wallet = new Wallet(Keypair.generate());
-        this.quartzClientPromise = QuartzClient.fetchClient(connection, wallet);
+        this.quartzClientPromise = QuartzClient.fetchClient(connection);
     }
 
     public getPrice = async (req: Request, res: Response, next: NextFunction) => {

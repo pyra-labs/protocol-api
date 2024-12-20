@@ -1,10 +1,9 @@
-import { Connection, Keypair } from "@solana/web3.js";
 import config from "../config/config.js";
 import type { NextFunction, Request, Response } from "express";
 import { bnToDecimal } from "../utils/helpers.js";
-import { PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
-import { QuartzClient, type QuartzUser, SUPPORTED_DRIFT_MARKETS, Wallet, type BN } from "@quartz-labs/sdk";
+import { QuartzClient, type QuartzUser, SUPPORTED_DRIFT_MARKETS, type BN } from "@quartz-labs/sdk";
 
 export class DriftController {
     private quartzClientPromise: Promise<QuartzClient>;
@@ -14,8 +13,7 @@ export class DriftController {
 
     constructor() {
         const connection = new Connection(config.RPC_URL);
-        const wallet = new Wallet(Keypair.generate());
-        this.quartzClientPromise = QuartzClient.fetchClient(connection, wallet);
+        this.quartzClientPromise = QuartzClient.fetchClient(connection);
     }
 
     private validateAddress(address: string): PublicKey {
@@ -47,7 +45,7 @@ export class DriftController {
             throw new HttpException(400, "Invalid market indices");
         }
 
-        if (marketIndices.some(index => !SUPPORTED_DRIFT_MARKETS.includes(index))) {
+        if (marketIndices.some(index => !SUPPORTED_DRIFT_MARKETS.includes(index as any))) {
             throw new HttpException(400, "Unsupported market index");
         }
 
