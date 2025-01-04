@@ -1,29 +1,23 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DriftController = void 0;
-const config_js_1 = __importDefault(require("../config/config.js"));
-const helpers_js_1 = require("../utils/helpers.js");
-const web3_js_1 = require("@solana/web3.js");
-const errors_js_1 = require("../utils/errors.js");
-const sdk_1 = require("@quartz-labs/sdk");
-class DriftController {
+import config from "../config/config.js";
+import { bnToDecimal } from "../utils/helpers.js";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { HttpException } from "../utils/errors.js";
+import { QuartzClient, MarketIndex } from "@quartz-labs/sdk";
+export class DriftController {
     quartzClientPromise;
     rateCache = {};
     RATE_CACHE_DURATION = 60_000;
     constructor() {
-        const connection = new web3_js_1.Connection(config_js_1.default.RPC_URL);
-        this.quartzClientPromise = sdk_1.QuartzClient.fetchClient(connection);
+        const connection = new Connection(config.RPC_URL);
+        this.quartzClientPromise = QuartzClient.fetchClient(connection);
     }
     validateAddress(address) {
         try {
-            const pubkey = new web3_js_1.PublicKey(address);
+            const pubkey = new PublicKey(address);
             return pubkey;
         }
         catch {
-            throw new errors_js_1.HttpException(400, "Invalid address");
+            throw new HttpException(400, "Invalid address");
         }
     }
     async getQuartzUser(pubkey) {
@@ -32,20 +26,20 @@ class DriftController {
             return quartzClient.getQuartzAccount(pubkey);
         }
         catch {
-            throw new errors_js_1.HttpException(400, "Quartz account not found");
+            throw new HttpException(400, "Quartz account not found");
         }
     }
     validateMarketIndices(marketIndicesParam) {
         if (!marketIndicesParam) {
-            throw new errors_js_1.HttpException(400, "Market indices are required");
+            throw new HttpException(400, "Market indices are required");
         }
         const decodedMarketIndices = decodeURIComponent(marketIndicesParam);
         const marketIndices = decodedMarketIndices.split(',').map(Number).filter(n => !Number.isNaN(n));
         if (marketIndices.length === 0) {
-            throw new errors_js_1.HttpException(400, "Invalid market index");
+            throw new HttpException(400, "Invalid market index");
         }
-        if (marketIndices.some(index => !sdk_1.MarketIndex.includes(index))) {
-            throw new errors_js_1.HttpException(400, "Unsupported market index");
+        if (marketIndices.some(index => !MarketIndex.includes(index))) {
+            throw new HttpException(400, "Unsupported market index");
         }
         return marketIndices;
     }
@@ -67,12 +61,12 @@ class DriftController {
                         borrowRateBN = await quartzClient.getBorrowRate(index);
                     }
                     catch {
-                        throw new errors_js_1.HttpException(400, `Could not find rates for spot market index ${index}`);
+                        throw new HttpException(400, `Could not find rates for spot market index ${index}`);
                     }
                     // Update cache
                     this.rateCache[index] = {
-                        depositRate: (0, helpers_js_1.bnToDecimal)(depositRateBN, 6),
-                        borrowRate: (0, helpers_js_1.bnToDecimal)(borrowRateBN, 6),
+                        depositRate: bnToDecimal(depositRateBN, 6),
+                        borrowRate: bnToDecimal(borrowRateBN, 6),
                         timestamp: now
                     };
                 });
@@ -93,7 +87,7 @@ class DriftController {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices);
             const address = this.validateAddress(req.query.address);
             const user = await this.getQuartzUser(address).catch(() => {
-                throw new errors_js_1.HttpException(400, "Address is not a Quartz user");
+                throw new HttpException(400, "Address is not a Quartz user");
             });
             const balances = await Promise.all(marketIndices.map(index => user.getTokenBalance(index)));
             res.status(200).json(balances);
@@ -107,7 +101,7 @@ class DriftController {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices);
             const address = this.validateAddress(req.query.address);
             const user = await this.getQuartzUser(address).catch(() => {
-                throw new errors_js_1.HttpException(400, "Address is not a Quartz user");
+                throw new HttpException(400, "Address is not a Quartz user");
             });
             const withdrawLimits = await Promise.all(marketIndices.map(index => user.getWithdrawalLimit(index)));
             res.status(200).json(withdrawLimits);
@@ -120,7 +114,7 @@ class DriftController {
         try {
             const address = this.validateAddress(req.query.address);
             const user = await this.getQuartzUser(address).catch(() => {
-                throw new errors_js_1.HttpException(400, "Address is not a Quartz user");
+                throw new HttpException(400, "Address is not a Quartz user");
             });
             const health = user.getHealth();
             res.status(200).json(health);
@@ -130,5 +124,4 @@ class DriftController {
         }
     };
 }
-exports.DriftController = DriftController;
 //# sourceMappingURL=drift.controller.js.map
