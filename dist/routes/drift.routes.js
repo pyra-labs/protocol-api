@@ -1,9 +1,12 @@
-import { Router } from "express";
-import { DriftController } from "../controllers/drift.controller.js";
-export class DriftRoute {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DriftRoute = void 0;
+const express_1 = require("express");
+const drift_controller_js_1 = require("../controllers/drift.controller.js");
+class DriftRoute {
     path = "/drift";
-    router = Router();
-    driftController = new DriftController();
+    router = (0, express_1.Router)();
+    driftController = new drift_controller_js_1.DriftController();
     constructor() {
         this.initializeRoutes();
     }
@@ -14,4 +17,5 @@ export class DriftRoute {
         this.router.get("/health", this.driftController.getHealth);
     }
 }
+exports.DriftRoute = DriftRoute;
 //# sourceMappingURL=drift.routes.js.map

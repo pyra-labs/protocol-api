@@ -7,7 +7,7 @@ const testWallet = "DcJpAhpbhwgXF5UBJP1KN6ub4GS61TmAb32LtoB57pAf";
 const invalidWallet = "AhnrRNffzaLsFB9aL29eQ3tW2te3srBZE6BTgkvzp9rq";
 
 
-describe("Test /drift/rate", () => {
+describe("Test /user/rate", () => {
     const routeUrl = `${baseUrl}/rate`;
 
     it("Should return the rate", async () => {
@@ -64,7 +64,7 @@ describe("Test /drift/rate", () => {
 });
 
 
-describe("Test /drift/balance", () => {
+describe("Test /user/balance", () => {
     const routeUrl = `${baseUrl}/balance`;
 
     it("Should return the balance", async () => {
@@ -140,7 +140,7 @@ describe("Test /drift/balance", () => {
 })
 
 
-describe("Test /drift/withdraw-limit", () => {
+describe("Test /user/withdraw-limit", () => {
     const routeUrl = `${baseUrl}/withdraw-limit`;
 
     it("Should return the withdraw limit", async () => {
@@ -216,7 +216,7 @@ describe("Test /drift/withdraw-limit", () => {
 })
 
 
-describe("Test /drift/health", () => {
+describe("Test /user/health", () => {
     const routeUrl = `${baseUrl}/health`;
 
     it("Should return the health", async () => {

@@ -1,9 +1,12 @@
-import { Router } from "express";
-import { DataController } from "../controllers/data.controller.js";
-export class DataRoute {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DataRoute = void 0;
+const express_1 = require("express");
+const data_controller_js_1 = require("../controllers/data.controller.js");
+class DataRoute {
     path = "/data";
-    router = Router();
-    dataController = new DataController();
+    router = (0, express_1.Router)();
+    dataController = new data_controller_js_1.DataController();
     constructor() {
         this.initializeRoutes();
     }
@@ -15,4 +18,5 @@ export class DataRoute {
         this.router.put("/update-website-data", this.dataController.updateWebsiteData);
     }
 }
+exports.DataRoute = DataRoute;
 //# sourceMappingURL=data.routes.js.map

@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from "express";
 import { bnToDecimal } from "../utils/helpers.js";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
-import { QuartzClient, type QuartzUser, SUPPORTED_DRIFT_MARKETS, type BN } from "@quartz-labs/sdk";
+import { QuartzClient, type QuartzUser, type BN, MarketIndex } from "@quartz-labs/sdk";
 
 export class DriftController {
     private quartzClientPromise: Promise<QuartzClient>;
@@ -42,10 +42,10 @@ export class DriftController {
         const decodedMarketIndices = decodeURIComponent(marketIndicesParam);
         const marketIndices = decodedMarketIndices.split(',').map(Number).filter(n => !Number.isNaN(n));
         if (marketIndices.length === 0) {
-            throw new HttpException(400, "Invalid market indices");
+            throw new HttpException(400, "Invalid market index");
         }
 
-        if (marketIndices.some(index => !SUPPORTED_DRIFT_MARKETS.includes(index as any))) {
+        if (marketIndices.some(index => !MarketIndex.includes(index as any))) {
             throw new HttpException(400, "Unsupported market index");
         }
 

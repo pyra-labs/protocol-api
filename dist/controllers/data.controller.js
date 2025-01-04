@@ -1,23 +1,28 @@
-import { HttpException } from "../utils/errors.js";
-import { Connection, Keypair } from "@solana/web3.js";
-import config from "../config/config.js";
-import { BASE_UNITS_PER_USDC, YIELD_CUT } from "../config/constants.js";
-import { bnToDecimal, getGoogleAccessToken, getTimestamp, retryRPCWithBackoff } from "../utils/helpers.js";
-import { WebflowClient } from "webflow-api";
-import { DRIFT_MARKET_INDEX_USDC, QuartzClient, Wallet } from "@quartz-labs/sdk";
-export class DataController {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DataController = void 0;
+const errors_js_1 = require("../utils/errors.js");
+const web3_js_1 = require("@solana/web3.js");
+const config_js_1 = __importDefault(require("../config/config.js"));
+const constants_js_1 = require("../config/constants.js");
+const helpers_js_1 = require("../utils/helpers.js");
+const webflow_api_1 = require("webflow-api");
+const sdk_1 = require("@quartz-labs/sdk");
+class DataController {
     quartzClientPromise;
     priceCache = {};
     PRICE_CACHE_DURATION = 60_000;
     constructor() {
-        const connection = new Connection(config.RPC_URL);
-        const wallet = new Wallet(Keypair.generate());
-        this.quartzClientPromise = QuartzClient.fetchClient(connection, wallet);
+        const connection = new web3_js_1.Connection(config_js_1.default.RPC_URL);
+        this.quartzClientPromise = sdk_1.QuartzClient.fetchClient(connection);
     }
     getPrice = async (req, res, next) => {
         const ids = req.query.ids;
         if (!ids)
-            return next(new HttpException(400, "ID is required"));
+            return next(new errors_js_1.HttpException(400, "ID is required"));
         const decodedIds = decodeURIComponent(ids);
         const idArray = decodedIds.split(",");
         try {
@@ -29,7 +34,7 @@ export class DataController {
             if (uncachedIds.length > 0) {
                 const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${uncachedIds.join(',')}&vs_currencies=usd`);
                 if (!response.ok) {
-                    return next(new HttpException(400, "Failed to fetch data from CoinGecko"));
+                    return next(new errors_js_1.HttpException(400, "Failed to fetch data from CoinGecko"));
                 }
                 const data = (await response.json());
                 for (const id of Object.keys(data)) {
@@ -48,7 +53,7 @@ export class DataController {
                 return acc;
             }, {});
             if (Object.keys(pricesUsd).length === 0) {
-                return next(new HttpException(400, "Invalid ID"));
+                return next(new errors_js_1.HttpException(400, "Invalid ID"));
             }
             res.status(200).json(pricesUsd);
         }
@@ -59,7 +64,7 @@ export class DataController {
     getUsers = async (_, res, next) => {
         const quartzClient = await this.quartzClientPromise;
         try {
-            const owners = await retryRPCWithBackoff(async () => {
+            const owners = await (0, helpers_js_1.retryRPCWithBackoff)(async () => {
                 return await quartzClient.getAllQuartzAccountOwnerPubkeys();
             }, 3, 1_000);
             res.status(200).json({
@@ -74,7 +79,7 @@ export class DataController {
     getTVL = async (_, res, next) => {
         const quartzClient = await this.quartzClientPromise;
         try {
-            const users = await retryRPCWithBackoff(async () => {
+            const users = await (0, helpers_js_1.retryRPCWithBackoff)(async () => {
                 const owners = await quartzClient.getAllQuartzAccountOwnerPubkeys();
                 const users = await quartzClient.getMultipleQuartzAccounts(owners);
                 return users;
@@ -87,7 +92,7 @@ export class DataController {
                 totalCollateralInUsdc += user.getTotalCollateralValue();
                 totalLoansInUsdc += user.getMaintenanceMarginRequirement();
             }
-            const baseUnitsToUsd = (baseUnits) => Number((baseUnits / BASE_UNITS_PER_USDC).toFixed(2));
+            const baseUnitsToUsd = (baseUnits) => Number((baseUnits / constants_js_1.BASE_UNITS_PER_USDC).toFixed(2));
             res.status(200).json({
                 collateral: baseUnitsToUsd(totalCollateralInUsdc),
                 loans: baseUnitsToUsd(totalLoansInUsdc),
@@ -101,25 +106,25 @@ export class DataController {
     addWaitlist = async (req, res, next) => {
         const email = req.body.email;
         if (!email)
-            return next(new HttpException(400, "Email is required"));
+            return next(new errors_js_1.HttpException(400, "Email is required"));
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-            return next(new HttpException(400, "Invalid email"));
+            return next(new errors_js_1.HttpException(400, "Invalid email"));
         const name = req.body.name;
         if (!name)
-            return next(new HttpException(400, "Name is required"));
+            return next(new errors_js_1.HttpException(400, "Name is required"));
         const country = req.body.country;
         if (!country)
-            return next(new HttpException(400, "Country is required"));
+            return next(new errors_js_1.HttpException(400, "Country is required"));
         const newsletter = req.body.newsletter;
         if (newsletter === undefined || newsletter === null) {
-            return next(new HttpException(400, "Newsletter is required"));
+            return next(new errors_js_1.HttpException(400, "Newsletter is required"));
         }
         if (typeof newsletter !== "boolean")
-            return next(new HttpException(400, "Newsletter must be a boolean"));
+            return next(new errors_js_1.HttpException(400, "Newsletter must be a boolean"));
         try {
-            const accessToken = await getGoogleAccessToken();
+            const accessToken = await (0, helpers_js_1.getGoogleAccessToken)();
             // Ensure waitlist is not already present
-            const checkResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.GOOGLE_SPREADSHEET_ID}/values/waitlist!B:B`, {
+            const checkResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config_js_1.default.GOOGLE_SPREADSHEET_ID}/values/waitlist!B:B`, {
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
                 }
@@ -135,21 +140,21 @@ export class DataController {
                 return;
             }
             // Append to waitlist
-            const appendResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config.GOOGLE_SPREADSHEET_ID}/values/waitlist!A:F:append?valueInputOption=USER_ENTERED`, {
+            const appendResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${config_js_1.default.GOOGLE_SPREADSHEET_ID}/values/waitlist!A:F:append?valueInputOption=USER_ENTERED`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    values: [[getTimestamp(), email, name, country, newsletter ? "TRUE" : "FALSE", "1"]]
+                    values: [[(0, helpers_js_1.getTimestamp)(), email, name, country, newsletter ? "TRUE" : "FALSE", "1"]]
                 })
             });
             if (!appendResponse.ok)
                 throw new Error('Failed to update spreadsheet');
             // Update Webflow waitlist count
             const newWaitlistCount = rows.length + 1;
-            const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });
+            const webflowClient = new webflow_api_1.WebflowClient({ accessToken: config_js_1.default.WEBFLOW_ACCESS_TOKEN });
             await webflowClient.collections.items.updateItemLive("67504dd7fde047775f88c371", "67504dd7fde047775f88c3aa", {
                 id: "67504dd7fde047775f88c3aa",
                 fieldData: {
@@ -164,7 +169,7 @@ export class DataController {
                 headers: {
                     accept: 'application/json',
                     'content-type': 'application/json',
-                    'api-key': config.BREVO_API_KEY
+                    'api-key': config_js_1.default.BREVO_API_KEY
                 },
                 body: JSON.stringify({
                     templateId: 3,
@@ -195,13 +200,16 @@ export class DataController {
             "tether": 20800000
         };
         try {
-            const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });
+            const webflowClient = new webflow_api_1.WebflowClient({ accessToken: config_js_1.default.WEBFLOW_ACCESS_TOKEN });
             // Get USDC deposit rate
-            const usdcDepositRateBN = await quartzClient.getDepositRate(DRIFT_MARKET_INDEX_USDC);
-            const usdcDepositRate = bnToDecimal(usdcDepositRateBN, 6);
+            const usdcMarketIndex = Object.entries(sdk_1.TOKENS).find(([_, token]) => token.name === "USDC")?.[0];
+            if (!usdcMarketIndex)
+                throw new Error("USDC market index not found");
+            const usdcDepositRateBN = await quartzClient.getDepositRate(Number(usdcMarketIndex));
+            const usdcDepositRate = (0, helpers_js_1.bnToDecimal)(usdcDepositRateBN, 6);
             if (usdcDepositRate <= 0)
                 throw new Error("Invalid rate fetched");
-            const apyAfterCut = 100 * usdcDepositRate * (1 - YIELD_CUT);
+            const apyAfterCut = 100 * usdcDepositRate * (1 - constants_js_1.YIELD_CUT);
             const apyAfterCutRounded = Math.round((apyAfterCut + Number.EPSILON) * 100) / 100;
             // Update USDC deposit rate
             await webflowClient.collections.items.updateItemLive("67504dd7fde047775f88c371", "67504dd7fde047775f88c3be", {
@@ -252,4 +260,5 @@ export class DataController {
         }
     };
 }
+exports.DataController = DataController;
 //# sourceMappingURL=data.controller.js.map

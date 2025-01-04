@@ -1,29 +1,35 @@
-import express from "express";
-import config from "./config/config.js";
-import cors from "cors";
-import hpp from "hpp";
-import { AppLogger } from "./utils/logger.js";
-import helmet from "helmet";
-import { ErrorMiddleware, HttpException } from "./utils/errors.js";
-export class App extends AppLogger {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.App = void 0;
+const express_1 = __importDefault(require("express"));
+const config_js_1 = __importDefault(require("./config/config.js"));
+const cors_1 = __importDefault(require("cors"));
+const hpp_1 = __importDefault(require("hpp"));
+const logger_js_1 = require("./utils/logger.js");
+const helmet_1 = __importDefault(require("helmet"));
+const errors_js_1 = require("./utils/errors.js");
+class App extends logger_js_1.AppLogger {
     app;
     port;
     isListening = false;
     routes;
     constructor(routes) {
         super("API App");
-        this.port = config.PORT;
+        this.port = config_js_1.default.PORT;
         this.routes = routes;
-        this.app = express();
+        this.app = (0, express_1.default)();
         this.configureMiddleware();
         this.configureRoutes();
         this.configureErrorHandling();
     }
     configureMiddleware() {
-        this.app.use(cors({ origin: "*" }));
-        this.app.use(hpp());
-        this.app.use(helmet());
-        this.app.use(express.json());
+        this.app.use((0, cors_1.default)({ origin: "*" }));
+        this.app.use((0, hpp_1.default)());
+        this.app.use((0, helmet_1.default)());
+        this.app.use(express_1.default.json());
     }
     configureRoutes() {
         this.app.get("/", (_, res) => {
@@ -33,11 +39,11 @@ export class App extends AppLogger {
             this.app.use(route.path, route.router);
         }
         this.app.all("*", () => {
-            throw new HttpException(404, "Endpoint not found");
+            throw new errors_js_1.HttpException(404, "Endpoint not found");
         });
     }
     configureErrorHandling() {
-        const errorMiddleware = new ErrorMiddleware(this.logger);
+        const errorMiddleware = new errors_js_1.ErrorMiddleware(this.logger);
         this.app.use(errorMiddleware.handle);
     }
     async listen() {
@@ -51,4 +57,5 @@ export class App extends AppLogger {
         });
     }
 }
+exports.App = App;
 //# sourceMappingURL=app.js.map

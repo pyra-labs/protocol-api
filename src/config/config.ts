@@ -26,7 +26,7 @@ const envSchema = z.object({
     GOOGLE_PRIVATE_KEY: z.string(),
     GOOGLE_SPREADSHEET_ID: z.string(),
     WEBFLOW_ACCESS_TOKEN: z.string(),
-    BREVO_API_KEY: z.string(),
+    BREVO_API_KEY: z.string(), 
 });
 
 const config = envSchema.parse(process.env);

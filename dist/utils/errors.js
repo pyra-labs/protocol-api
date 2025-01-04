@@ -1,4 +1,7 @@
-export class HttpException extends Error {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ErrorMiddleware = exports.HttpException = void 0;
+class HttpException extends Error {
     status;
     message;
     constructor(status, message) {
@@ -7,7 +10,8 @@ export class HttpException extends Error {
         this.message = message;
     }
 }
-export class ErrorMiddleware {
+exports.HttpException = HttpException;
+class ErrorMiddleware {
     logger;
     constructor(logger) {
         this.logger = logger;
@@ -32,4 +36,5 @@ export class ErrorMiddleware {
         }
     }
 }
+exports.ErrorMiddleware = ErrorMiddleware;
 //# sourceMappingURL=errors.js.map

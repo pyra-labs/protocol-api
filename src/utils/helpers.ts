@@ -1,6 +1,14 @@
 import type { Logger } from "winston";
 import config from "../config/config.js";
-import type { BN } from "@quartz-labs/sdk";
+import { MarketIndex, TOKENS, type BN } from "@quartz-labs/sdk";
+import { VersionedTransaction } from "@solana/web3.js";
+import type { Connection } from "@solana/web3.js";
+import type { TransactionInstruction } from "@solana/web3.js";
+import type { PublicKey } from "@solana/web3.js";
+import type { AddressLookupTableAccount } from "@solana/web3.js";
+import { ComputeBudgetProgram } from "@solana/web3.js";
+import { TransactionMessage } from "@solana/web3.js";
+import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 
 export function bnToDecimal(bn: BN, decimalPlaces: number): number {
     const decimalFactor = 10 ** decimalPlaces;
@@ -99,4 +107,84 @@ export const getTimestamp = () => {
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const seconds = date.getSeconds().toString().padStart(2, '0');
     return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+}
+
+export async function buildTransaction(
+    connection: Connection,
+    instructions: TransactionInstruction[], 
+    address: PublicKey,
+    lookupTables: AddressLookupTableAccount[] = []
+): Promise<VersionedTransaction> {
+    // TODO: Calculate actual compute unit and fee
+    const ix_computeLimit = ComputeBudgetProgram.setComputeUnitLimit({
+        units: 200_000,
+    });
+    const ix_computePrice = ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 1_250_000,
+    });
+    instructions.unshift(ix_computeLimit, ix_computePrice);
+
+    const blockhash = (await connection.getLatestBlockhash()).blockhash;
+    const messageV0 = new TransactionMessage({
+        payerKey: address,
+        recentBlockhash: blockhash,
+        instructions: instructions
+    }).compileToV0Message(lookupTables);
+    const transaction = new VersionedTransaction(messageV0);
+    return transaction;
+}
+
+export async function makeCreateAtaIxsIfNeeded(
+    connection: Connection,
+    ata: PublicKey,
+    authority: PublicKey,
+    mint: PublicKey
+) {
+    const oix_createAta: TransactionInstruction[] = [];
+    const ataInfo = await connection.getAccountInfo(ata);
+    if (ataInfo === null) {
+        oix_createAta.push(
+            createAssociatedTokenAccountInstruction(
+                authority,
+                ata,
+                authority,
+                mint,
+            )
+        );
+    }
+    return oix_createAta;
+}
+
+export function getWsolMint() {
+    const mint = Object.values(TOKENS).find(token => token.name === "SOL")?.mint;
+    if (!mint) throw new Error("wSolMint not found");
+    return mint;
+}
+
+export async function getJupiterSwapQuote(
+    inputMint: PublicKey, 
+    outputMint: PublicKey, 
+    amount: number,
+    slippageBps: number
+) {
+    const quoteEndpoint = 
+        `https://quote-api.jup.ag/v6/quote?inputMint=${inputMint.toBase58()}&outputMint=${outputMint.toBase58()}&amount=${amount}&slippageBps=${slippageBps}&swapMode=ExactOut&onlyDirectRoutes=true`;
+    const response = await fetch(quoteEndpoint);
+    const body: any = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(body.error) ?? `Could not fetch ${quoteEndpoint}`);
+    return body;
+}
+
+export async function getTokenAccountBalance(connection: Connection, tokenAccount: PublicKey) {
+    try {
+        const balance = await connection.getTokenAccountBalance(tokenAccount);
+        return Number(balance.value.amount);
+    } catch {
+        return 0;
+    }
+}
+
+export function baseUnitToDecimal(baseUnits: number, marketIndex: MarketIndex): number {
+    const token = TOKENS[marketIndex];
+    return baseUnits / (10 ** token.decimalPrecision);
 }

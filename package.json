@@ -8,7 +8,9 @@
     "lint": "yarn biome lint --write",
     "test": "vitest run --pool=forks",
     "test:data": "vitest run --pool=forks src/test/data.test.ts",
-    "test:drift": "vitest run --pool=forks src/test/drift.test.ts",
+    "test:user": "vitest run --pool=forks src/test/user.test.ts",
+    "test:buildTransaction": "vitest run --pool=forks src/test/buildTransaction.test.ts",
+    "test:tx": "vitest run --pool=forks src/test/buildTransaction.test.ts",
     "build": "tsc -p tsconfig.json",
     "start": "yarn build && node dist/index.js"
   },
@@ -30,7 +32,11 @@
     "vitest": "^2.1.6"
   },
   "dependencies": {
+    "@jup-ag/api": "^6.0.32",
+    "@mrgnlabs/marginfi-client-v2": "^4.0.0",
+    "@mrgnlabs/mrgn-common": "^1.8.0",
     "@quartz-labs/sdk": "0.1.6",
+    "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.98.0",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",
@@ -45,7 +51,7 @@
     "zod": "^3.23.8"
   },
   "resolutions": {
-    "rpc-websockets": "^9.0.2",
+    "rpc-websockets": "^9.0.4",
     "@solana/web3.js": "^1.98.0"
   }
 }
