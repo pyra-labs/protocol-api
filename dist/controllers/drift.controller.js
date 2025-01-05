@@ -72,10 +72,12 @@ export class DriftController {
                 });
                 await Promise.all(promises);
             }
-            const rates = marketIndices.map(index => ({
-                depositRate: this.rateCache[index]?.depositRate,
-                borrowRate: this.rateCache[index]?.borrowRate
-            }));
+            const rates = marketIndices.reduce((acc, index) => Object.assign(acc, {
+                [index]: {
+                    depositRate: this.rateCache[index]?.depositRate,
+                    borrowRate: this.rateCache[index]?.borrowRate
+                }
+            }), {});
             res.status(200).json(rates);
         }
         catch (error) {
@@ -89,7 +91,11 @@ export class DriftController {
             const user = await this.getQuartzUser(address).catch(() => {
                 throw new HttpException(400, "Address is not a Quartz user");
             });
-            const balances = await Promise.all(marketIndices.map(index => user.getTokenBalance(index)));
+            const balancesValues = await Promise.all(marketIndices.map(async (index) => ({
+                index,
+                balance: await user.getTokenBalance(index)
+            })));
+            const balances = balancesValues.reduce((acc, { index, balance }) => Object.assign(acc, { [index]: balance }), {});
             res.status(200).json(balances);
         }
         catch (error) {

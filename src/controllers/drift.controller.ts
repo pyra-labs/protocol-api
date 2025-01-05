@@ -49,7 +49,7 @@ export class DriftController {
             throw new HttpException(400, "Unsupported market index");
         }
 
-        return marketIndices;
+        return marketIndices as MarketIndex[];
     }
 
     public getRate = async (req: Request, res: Response, next: NextFunction) => {
@@ -86,10 +86,17 @@ export class DriftController {
                 await Promise.all(promises);
             }
 
-            const rates = marketIndices.map(index => ({
-                depositRate: this.rateCache[index]?.depositRate,
-                borrowRate: this.rateCache[index]?.borrowRate
-            }));
+            const rates = marketIndices.reduce((acc, index) =>
+                Object.assign(acc, {
+                    [index]: {
+                        depositRate: this.rateCache[index]?.depositRate,
+                        borrowRate: this.rateCache[index]?.borrowRate
+                    }
+                }
+            ), {} as Record<
+                MarketIndex, 
+                { depositRate: number | undefined; borrowRate: number | undefined }>
+            );
 
             res.status(200).json(rates);
         } catch (error) {
@@ -105,9 +112,16 @@ export class DriftController {
                 throw new HttpException(400, "Address is not a Quartz user");
             });
 
-            const balances = await Promise.all(
-                marketIndices.map(index => user.getTokenBalance(index))
+            const balancesArray = await Promise.all(
+                marketIndices.map(async index => ({
+                    index,
+                    balance: await user.getTokenBalance(index)
+                }))
             );
+
+            const balances = balancesArray.reduce((acc, { index, balance }) => 
+                Object.assign(acc, { [index]: balance }
+            ), {} as Record<MarketIndex, BN>);
 
             res.status(200).json(balances);
         } catch (error) {
@@ -123,8 +137,15 @@ export class DriftController {
                 throw new HttpException(400, "Address is not a Quartz user");
             });
 
-            const withdrawLimits = await Promise.all(
-                marketIndices.map(index => user.getWithdrawalLimit(index))
+            const withdrawLimitsArray = await Promise.all(
+                marketIndices.map(async index => ({
+                    index,
+                    limit: await user.getWithdrawalLimit(index)
+                }))
+            );
+
+            const withdrawLimits = withdrawLimitsArray.reduce((acc, { index, limit }) => 
+                Object.assign(acc, { [index]: limit }), {} as Record<MarketIndex, BN>
             );
 
             res.status(200).json(withdrawLimits);
