@@ -5,7 +5,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { QuartzClient, type QuartzUser, type BN, MarketIndex } from "@quartz-labs/sdk";
 
-export class DriftController {
+export class UserController {
     private quartzClientPromise: Promise<QuartzClient>;
 
     private rateCache: Record<string, { depositRate: number; borrowRate: number; timestamp: number }> = {};

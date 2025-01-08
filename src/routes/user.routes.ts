@@ -1,11 +1,11 @@
 import { Router } from "express";
 import type { Routes } from "../interfaces/routes.interface.js";
-import { DriftController } from "../controllers/drift.controller.js";
+import { UserController } from "../controllers/user.controller.js";
 
 export class UserRoute implements Routes {
     public path = "/user";
     public router = Router();
-    private userController = new DriftController();
+    private userController = new UserController();
 
     constructor() {
         this.initializeRoutes();
