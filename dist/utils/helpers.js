@@ -1,5 +1,5 @@
 import config from "../config/config.js";
-import { MarketIndex, TOKENS } from "@quartz-labs/sdk";
+import { TOKENS } from "@quartz-labs/sdk";
 import { VersionedTransaction } from "@solana/web3.js";
 import { ComputeBudgetProgram } from "@solana/web3.js";
 import { TransactionMessage } from "@solana/web3.js";
@@ -127,6 +127,6 @@ export async function getTokenAccountBalance(connection, tokenAccount) {
 }
 export function baseUnitToDecimal(baseUnits, marketIndex) {
     const token = TOKENS[marketIndex];
-    return baseUnits / (10 ** token.decimalPrecision);
+    return baseUnits / (10 ** token.decimalPrecision.toNumber());
 }
 //# sourceMappingURL=helpers.js.map

@@ -1,6 +1,6 @@
 import type { Logger } from "winston";
 import config from "../config/config.js";
-import { MarketIndex, TOKENS, type BN } from "@quartz-labs/sdk";
+import { type MarketIndex, TOKENS, type BN } from "@quartz-labs/sdk";
 import { VersionedTransaction } from "@solana/web3.js";
 import type { Connection } from "@solana/web3.js";
 import type { TransactionInstruction } from "@solana/web3.js";
@@ -186,5 +186,5 @@ export async function getTokenAccountBalance(connection: Connection, tokenAccoun
 
 export function baseUnitToDecimal(baseUnits: number, marketIndex: MarketIndex): number {
     const token = TOKENS[marketIndex];
-    return baseUnits / (10 ** token.decimalPrecision);
+    return baseUnits / (10 ** token.decimalPrecision.toNumber());
 }

@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { DriftController } from "../controllers/drift.controller.js";
+import { UserController } from "../controllers/user.controller.js";
 export class UserRoute {
     path = "/user";
     router = Router();
-    userController = new DriftController();
+    userController = new UserController();
     constructor() {
         this.initializeRoutes();
     }
