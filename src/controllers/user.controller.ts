@@ -120,8 +120,8 @@ export class UserController {
             );
 
             const balances = balancesArray.reduce((acc, { index, balance }) => 
-                Object.assign(acc, { [index]: balance }
-            ), {} as Record<MarketIndex, BN>);
+                Object.assign(acc, { [index]: balance.toNumber() }
+            ), {} as Record<MarketIndex, number>);
 
             res.status(200).json(balances);
         } catch (error) {
@@ -145,8 +145,8 @@ export class UserController {
             );
 
             const withdrawLimits = withdrawLimitsArray.reduce((acc, { index, limit }) => 
-                Object.assign(acc, { [index]: limit }), {} as Record<MarketIndex, BN>
-            );
+                Object.assign(acc, { [index]: limit }
+            ), {} as Record<MarketIndex, number>);
 
             res.status(200).json(withdrawLimits);
         } catch (error) {
