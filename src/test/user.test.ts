@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import config from "../config/config.js";
 import QueryString from "qs";
+import { BN } from "@quartz-labs/sdk";
 
-const baseUrl = `http://localhost:${config.PORT}/drift`;
+const baseUrl = `http://localhost:${config.PORT}/user`;
 const testWallet = "DcJpAhpbhwgXF5UBJP1KN6ub4GS61TmAb32LtoB57pAf";
 const invalidWallet = "AhnrRNffzaLsFB9aL29eQ3tW2te3srBZE6BTgkvzp9rq";
 
@@ -18,8 +19,8 @@ describe("Test /user/rate", () => {
         const body = await response.json();
 
         expect(response.status).toBe(200);
-        expect(Array.isArray(body)).toBe(true);
-        expect(body.length).toBe(1);
+        expect(typeof body).toBe("object");
+        expect(Object.keys(body).length).toBe(1);
 
         expect(typeof body[0].depositRate).toBe("number");
         expect(typeof body[0].borrowRate).toBe("number");
@@ -33,8 +34,8 @@ describe("Test /user/rate", () => {
         const body = await response.json();
 
         expect(response.status).toBe(200);
-        expect(Array.isArray(body)).toBe(true);
-        expect(body.length).toBe(2);
+        expect(typeof body).toBe("object");
+        expect(Object.keys(body).length).toBe(2);
 
         expect(typeof body[0].depositRate).toBe("number");
         expect(typeof body[0].borrowRate).toBe("number");
@@ -77,10 +78,13 @@ describe("Test /user/balance", () => {
 
         expect(response.status).toBe(200);
 
-        expect(Array.isArray(body)).toBe(true);
-        expect(body.length).toBe(1);
+        expect(typeof body).toBe("object");
+        expect(Object.keys(body).length).toBe(1);
 
-        expect(typeof body[0]).toBe("number");
+        expect(typeof body[0]).toBe("string");
+        console.log(body[0]);
+        const balance = new BN(body[0]);
+        expect(Number.isNaN(balance.toNumber())).toBe(false);
     });
 
     it("Should return both balances", async () => {
@@ -93,11 +97,16 @@ describe("Test /user/balance", () => {
 
         expect(response.status).toBe(200);
 
-        expect(Array.isArray(body)).toBe(true);
-        expect(body.length).toBe(2);
+        expect(typeof body).toBe("object");
+        expect(Object.keys(body).length).toBe(2);
 
-        expect(typeof body[0]).toBe("number");
-        expect(typeof body[1]).toBe("number");
+        expect(typeof body[0]).toBe("string");
+        const balance1 = new BN(body[0]);
+        expect(Number.isNaN(balance1.toNumber())).toBe(false);
+
+        expect(typeof body[1]).toBe("string");
+        const balance2 = new BN(body[1]);
+        expect(Number.isNaN(balance2.toNumber())).toBe(false);
     });
 
     it("Should return 400 if the address is not a Quartz user", async () => {
@@ -153,8 +162,8 @@ describe("Test /user/withdraw-limit", () => {
 
         expect(response.status).toBe(200);
 
-        expect(Array.isArray(body)).toBe(true);
-        expect(body.length).toBe(1);
+        expect(typeof body).toBe("object");
+        expect(Object.keys(body).length).toBe(1);
 
         expect(typeof body[0]).toBe("number");
     });
@@ -169,8 +178,8 @@ describe("Test /user/withdraw-limit", () => {
 
         expect(response.status).toBe(200);
 
-        expect(Array.isArray(body)).toBe(true);
-        expect(body.length).toBe(2);
+        expect(typeof body).toBe("object");
+        expect(Object.keys(body).length).toBe(2);
 
         expect(typeof body[0]).toBe("number");
         expect(typeof body[1]).toBe("number");
