@@ -32,7 +32,7 @@
     "vitest": "^2.1.6"
   },
   "dependencies": {
-    "@quartz-labs/sdk": "0.3.6",
+    "@quartz-labs/sdk": "0.3.8",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.98.0",
     "body-parser": "^1.20.3",
