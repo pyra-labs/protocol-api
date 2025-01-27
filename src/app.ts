@@ -2,10 +2,10 @@ import express from "express";
 import config from "./config/config.js";
 import cors from "cors";
 import hpp from "hpp";
-import { AppLogger } from "./utils/logger.js";
 import helmet from "helmet";
 import { ErrorMiddleware, HttpException } from "./utils/errors.js";
 import type { Routes } from "./interfaces/routes.interface.js";
+import { AppLogger } from "@quartz-labs/logger";
 
 export class App extends AppLogger {
     public app: express.Application;
@@ -15,7 +15,9 @@ export class App extends AppLogger {
     private routes: Routes[];
 
     constructor(routes: Routes[]) {
-        super("API App");
+        super({
+            name: "API App"
+        });
         this.port = config.PORT;
         this.routes = routes;
 

@@ -95,7 +95,7 @@ export class UserController {
                 index,
                 balance: await user.getTokenBalance(index)
             })));
-            const balances = balancesArray.reduce((acc, { index, balance }) => Object.assign(acc, { [index]: balance }), {});
+            const balances = balancesArray.reduce((acc, { index, balance }) => Object.assign(acc, { [index]: balance.toNumber() }), {});
             res.status(200).json(balances);
         }
         catch (error) {

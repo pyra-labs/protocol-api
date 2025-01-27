@@ -2,16 +2,18 @@ import express from "express";
 import config from "./config/config.js";
 import cors from "cors";
 import hpp from "hpp";
-import { AppLogger } from "./utils/logger.js";
 import helmet from "helmet";
 import { ErrorMiddleware, HttpException } from "./utils/errors.js";
+import { AppLogger } from "@quartz-labs/logger";
 export class App extends AppLogger {
     app;
     port;
     isListening = false;
     routes;
     constructor(routes) {
-        super("API App");
+        super({
+            name: "API App"
+        });
         this.port = config.PORT;
         this.routes = routes;
         this.app = express();
