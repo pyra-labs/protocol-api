@@ -28,10 +28,10 @@ export class UserController {
     private async getQuartzUser(pubkey: PublicKey): Promise<QuartzUser> {
         try {
             const quartzClient = await this.quartzClientPromise;
-            return retryWithBackoff(
+            return await retryWithBackoff(
                 () => quartzClient.getQuartzAccount(pubkey),
                 2
-            );
+            )
         } catch {
             throw new HttpException(400, "Quartz account not found");
         }
