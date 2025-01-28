@@ -1,4 +1,3 @@
-import type { Logger } from "winston";
 import config from "../config/config.js";
 import { type MarketIndex, TOKENS, type BN } from "@quartz-labs/sdk";
 import { VersionedTransaction } from "@solana/web3.js";
@@ -13,31 +12,6 @@ import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 export function bnToDecimal(bn: BN, decimalPlaces: number): number {
     const decimalFactor = 10 ** decimalPlaces;
     return bn.toNumber() / decimalFactor;
-}
-
-export const retryRPCWithBackoff = async <T>(
-    fn: () => Promise<T>,
-    retries: number,
-    initialDelay: number,
-    logger?: Logger
-): Promise<T> => {
-    let lastError: any;
-    for (let i = 0; i < retries; i++) {
-        try {
-            return await fn();
-        } catch (error: any) {
-            lastError = error;
-            if (error?.message?.includes('503')) {
-                const delay = initialDelay * (2 ** i);
-                if (logger) logger.warn(`RPC node unavailable, retrying in ${delay}ms...`);
-                
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-            }
-            throw error;
-        }
-    }
-    throw lastError;
 }
 
 export const getGoogleAccessToken = async () => {

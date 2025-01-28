@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from "express";
 import { bnToDecimal } from "../utils/helpers.js";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
-import { QuartzClient, type QuartzUser, type BN, MarketIndex } from "@quartz-labs/sdk";
+import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
 
 export class UserController {
     private quartzClientPromise: Promise<QuartzClient>;
@@ -28,7 +28,10 @@ export class UserController {
     private async getQuartzUser(pubkey: PublicKey): Promise<QuartzUser> {
         try {
             const quartzClient = await this.quartzClientPromise;
-            return quartzClient.getQuartzAccount(pubkey);
+            return retryWithBackoff(
+                () => quartzClient.getQuartzAccount(pubkey),
+                2
+            );
         } catch {
             throw new HttpException(400, "Quartz account not found");
         }
@@ -69,8 +72,14 @@ export class UserController {
                     let depositRateBN: BN;
                     let borrowRateBN: BN;
                     try {
-                        depositRateBN = await quartzClient.getDepositRate(index);
-                        borrowRateBN = await quartzClient.getBorrowRate(index);
+                        depositRateBN = await retryWithBackoff(
+                            () => quartzClient.getDepositRate(index),
+                            3
+                        );
+                        borrowRateBN = await retryWithBackoff(
+                            () => quartzClient.getBorrowRate(index),
+                            3
+                        );
                     } catch {
                         throw new HttpException(400, `Could not find rates for spot market index ${index}`);
                     }
@@ -108,20 +117,22 @@ export class UserController {
         try {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
             const address = this.validateAddress(req.query.address as string);
-            const user = await this.getQuartzUser(address).catch(() => {
-                throw new HttpException(400, "Address is not a Quartz user");
-            });
+            const user = await this.getQuartzUser(address);
 
-            const balancesArray = await Promise.all(
-                marketIndices.map(async index => ({
-                    index,
-                    balance: await user.getTokenBalance(index)
-                }))
+            const balancesBN = await retryWithBackoff(
+                () => user.getMultipleTokenBalances(marketIndices),
+                3
             );
 
-            const balances = balancesArray.reduce((acc, { index, balance }) => 
-                Object.assign(acc, { [index]: balance.toNumber() }
-            ), {} as Record<MarketIndex, number>);
+            const balances = Object.entries(balancesBN).reduce((acc, [index, balance]) =>
+                Object.assign(acc, {
+                    [index]: bnToDecimal(
+                        balance, 
+                        TOKENS[Number(index) as MarketIndex].decimalPrecision.toNumber()
+                    )
+                }),
+                {} as Record<MarketIndex, number>
+            );
 
             res.status(200).json(balances);
         } catch (error) {
@@ -133,20 +144,12 @@ export class UserController {
         try {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
             const address = this.validateAddress(req.query.address as string);
-            const user = await this.getQuartzUser(address).catch(() => {
-                throw new HttpException(400, "Address is not a Quartz user");
-            });
+            const user = await this.getQuartzUser(address);
 
-            const withdrawLimitsArray = await Promise.all(
-                marketIndices.map(async index => ({
-                    index,
-                    limit: await user.getWithdrawalLimit(index)
-                }))
+            const withdrawLimits = await retryWithBackoff(
+                () => user.getMultipleWithdrawalLimits(marketIndices),
+                3
             );
-
-            const withdrawLimits = withdrawLimitsArray.reduce((acc, { index, limit }) => 
-                Object.assign(acc, { [index]: limit }
-            ), {} as Record<MarketIndex, number>);
 
             res.status(200).json(withdrawLimits);
         } catch (error) {
@@ -157,9 +160,7 @@ export class UserController {
     public getHealth = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const address = this.validateAddress(req.query.address as string);
-            const user = await this.getQuartzUser(address).catch(() => {
-                throw new HttpException(400, "Address is not a Quartz user");
-            });
+            const user = await this.getQuartzUser(address);
             const health = user.getHealth();
             res.status(200).json(health);
         } catch (error) {
