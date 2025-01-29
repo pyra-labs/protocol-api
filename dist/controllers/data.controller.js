@@ -2,9 +2,9 @@ import { HttpException } from "../utils/errors.js";
 import { Connection } from "@solana/web3.js";
 import config from "../config/config.js";
 import { BASE_UNITS_PER_USDC, YIELD_CUT } from "../config/constants.js";
-import { bnToDecimal, getGoogleAccessToken, getTimestamp, retryRPCWithBackoff } from "../utils/helpers.js";
+import { bnToDecimal, getGoogleAccessToken, getTimestamp } from "../utils/helpers.js";
 import { WebflowClient } from "webflow-api";
-import { QuartzClient, TOKENS } from "@quartz-labs/sdk";
+import { QuartzClient, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
 export class DataController {
     quartzClientPromise;
     priceCache = {};
@@ -26,11 +26,14 @@ export class DataController {
                 return !cached || (now - cached.timestamp) > this.PRICE_CACHE_DURATION;
             });
             if (uncachedIds.length > 0) {
-                const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${uncachedIds.join(',')}&vs_currencies=usd`);
-                if (!response.ok) {
-                    return next(new HttpException(400, "Failed to fetch data from CoinGecko"));
-                }
-                const data = (await response.json());
+                const data = await retryWithBackoff(async () => {
+                    const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${uncachedIds.join(',')}&vs_currencies=usd`);
+                    if (!response.ok) {
+                        throw new HttpException(400, "Failed to fetch data from CoinGecko");
+                    }
+                    const body = await response.json();
+                    return body;
+                }, 3);
                 for (const id of Object.keys(data)) {
                     if (!data[id])
                         throw new Error(`Invalid data fetched for ${id}`);
@@ -58,9 +61,7 @@ export class DataController {
     getUsers = async (_, res, next) => {
         const quartzClient = await this.quartzClientPromise;
         try {
-            const owners = await retryRPCWithBackoff(async () => {
-                return await quartzClient.getAllQuartzAccountOwnerPubkeys();
-            }, 3, 1_000);
+            const owners = await retryWithBackoff(() => quartzClient.getAllQuartzAccountOwnerPubkeys());
             res.status(200).json({
                 count: owners.length,
                 users: owners
@@ -73,11 +74,11 @@ export class DataController {
     getTVL = async (_, res, next) => {
         const quartzClient = await this.quartzClientPromise;
         try {
-            const users = await retryRPCWithBackoff(async () => {
+            const users = await retryWithBackoff(async () => {
                 const owners = await quartzClient.getAllQuartzAccountOwnerPubkeys();
                 const users = await quartzClient.getMultipleQuartzAccounts(owners);
                 return users;
-            }, 3, 1_000);
+            });
             let totalCollateralInUsdc = 0;
             let totalLoansInUsdc = 0;
             for (const user of users) {

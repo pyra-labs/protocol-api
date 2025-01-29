@@ -2,7 +2,7 @@ import config from "../config/config.js";
 import { bnToDecimal } from "../utils/helpers.js";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
-import { QuartzClient, MarketIndex } from "@quartz-labs/sdk";
+import { QuartzClient, MarketIndex, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
 export class UserController {
     quartzClientPromise;
     rateCache = {};
@@ -23,7 +23,7 @@ export class UserController {
     async getQuartzUser(pubkey) {
         try {
             const quartzClient = await this.quartzClientPromise;
-            return quartzClient.getQuartzAccount(pubkey);
+            return await retryWithBackoff(() => quartzClient.getQuartzAccount(pubkey), 2);
         }
         catch {
             throw new HttpException(400, "Quartz account not found");
@@ -57,8 +57,8 @@ export class UserController {
                     let depositRateBN;
                     let borrowRateBN;
                     try {
-                        depositRateBN = await quartzClient.getDepositRate(index);
-                        borrowRateBN = await quartzClient.getBorrowRate(index);
+                        depositRateBN = await retryWithBackoff(() => quartzClient.getDepositRate(index), 3);
+                        borrowRateBN = await retryWithBackoff(() => quartzClient.getBorrowRate(index), 3);
                     }
                     catch {
                         throw new HttpException(400, `Could not find rates for spot market index ${index}`);
@@ -88,14 +88,13 @@ export class UserController {
         try {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices);
             const address = this.validateAddress(req.query.address);
-            const user = await this.getQuartzUser(address).catch(() => {
-                throw new HttpException(400, "Address is not a Quartz user");
-            });
-            const balancesArray = await Promise.all(marketIndices.map(async (index) => ({
-                index,
-                balance: await user.getTokenBalance(index)
-            })));
-            const balances = balancesArray.reduce((acc, { index, balance }) => Object.assign(acc, { [index]: balance.toNumber() }), {});
+            const user = await this.getQuartzUser(address);
+            const balancesBN = await retryWithBackoff(() => user.getMultipleTokenBalances(marketIndices), 3);
+            console.log(balancesBN);
+            const balances = Object.entries(balancesBN).reduce((acc, [index, balance]) => Object.assign(acc, {
+                [index]: balance.toNumber()
+            }), {});
+            console.log(balances);
             res.status(200).json(balances);
         }
         catch (error) {
@@ -106,14 +105,8 @@ export class UserController {
         try {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices);
             const address = this.validateAddress(req.query.address);
-            const user = await this.getQuartzUser(address).catch(() => {
-                throw new HttpException(400, "Address is not a Quartz user");
-            });
-            const withdrawLimitsArray = await Promise.all(marketIndices.map(async (index) => ({
-                index,
-                limit: await user.getWithdrawalLimit(index)
-            })));
-            const withdrawLimits = withdrawLimitsArray.reduce((acc, { index, limit }) => Object.assign(acc, { [index]: limit }), {});
+            const user = await this.getQuartzUser(address);
+            const withdrawLimits = await retryWithBackoff(() => user.getMultipleWithdrawalLimits(marketIndices), 3);
             res.status(200).json(withdrawLimits);
         }
         catch (error) {
@@ -123,9 +116,7 @@ export class UserController {
     getHealth = async (req, res, next) => {
         try {
             const address = this.validateAddress(req.query.address);
-            const user = await this.getQuartzUser(address).catch(() => {
-                throw new HttpException(400, "Address is not a Quartz user");
-            });
+            const user = await this.getQuartzUser(address);
             const health = user.getHealth();
             res.status(200).json(health);
         }

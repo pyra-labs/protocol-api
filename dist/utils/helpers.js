@@ -8,26 +8,6 @@ export function bnToDecimal(bn, decimalPlaces) {
     const decimalFactor = 10 ** decimalPlaces;
     return bn.toNumber() / decimalFactor;
 }
-export const retryRPCWithBackoff = async (fn, retries, initialDelay, logger) => {
-    let lastError;
-    for (let i = 0; i < retries; i++) {
-        try {
-            return await fn();
-        }
-        catch (error) {
-            lastError = error;
-            if (error?.message?.includes('503')) {
-                const delay = initialDelay * (2 ** i);
-                if (logger)
-                    logger.warn(`RPC node unavailable, retrying in ${delay}ms...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-            }
-            throw error;
-        }
-    }
-    throw lastError;
-};
 export const getGoogleAccessToken = async () => {
     const jwtToken = JSON.stringify({
         iss: config.GOOGLE_CLIENT_EMAIL,

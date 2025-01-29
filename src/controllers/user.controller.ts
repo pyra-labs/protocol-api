@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from "express";
 import { bnToDecimal } from "../utils/helpers.js";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
-import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
+import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
 
 export class UserController {
     private quartzClientPromise: Promise<QuartzClient>;
@@ -126,10 +126,7 @@ export class UserController {
 
             const balances = Object.entries(balancesBN).reduce((acc, [index, balance]) =>
                 Object.assign(acc, {
-                    [index]: bnToDecimal(
-                        balance, 
-                        TOKENS[Number(index) as MarketIndex].decimalPrecision.toNumber()
-                    )
+                    [index]: balance.toNumber()
                 }),
                 {} as Record<MarketIndex, number>
             );
