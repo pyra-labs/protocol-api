@@ -149,11 +149,15 @@ export class DataController {
                     }
                 }
             );
-            if (!checkResponse.ok) throw new Error('Failed to find spreadsheet');
+            if (!checkResponse.ok) {
+                throw new Error(`Failed to find spreadsheet. Submitted data: ${JSON.stringify({ email, name, country, newsletter })}`);
+            }
             const data = (await checkResponse.json()) as { values?: string[][]};
             const rows = data.values?.slice(1);
     
-            if (!rows || rows.length === 0) throw new Error("Failed to fetch data from spreadsheet");
+            if (!rows || rows.length === 0) {
+                throw new Error(`Failed to fetch data from spreadsheet. Submitted data: ${JSON.stringify({ email, name, country, newsletter })}`);
+            }
             if (rows.some((row: string[]) => row[0] === email)) {
                 res.status(200).json({ message: "Email already exists in waitlist" });
                 return;
@@ -173,7 +177,9 @@ export class DataController {
                     })
                 }
             );
-            if (!appendResponse.ok) throw new Error('Failed to update spreadsheet');
+            if (!appendResponse.ok) {
+                throw new Error(`Failed to update spreadsheet. Submitted data: ${JSON.stringify({ email, name, country, newsletter })}`);
+            }
 
             // Update Webflow waitlist count
             const newWaitlistCount = rows.length + 1;
