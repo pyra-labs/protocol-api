@@ -6,14 +6,16 @@ import { BASE_UNITS_PER_USDC, YIELD_CUT } from "../config/constants.js";
 import { bnToDecimal, getGoogleAccessToken, getTimestamp } from "../utils/helpers.js";
 import { WebflowClient } from "webflow-api";
 import { QuartzClient, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
+import { Controller } from "./controller.js";
 
-export class DataController {
+export class DataController extends Controller {
     private quartzClientPromise: Promise<QuartzClient>;
 
     private priceCache: Record<string, { price: number; timestamp: number }> = {};
     private PRICE_CACHE_DURATION = 60_000;
 
     constructor() {
+        super();
         const connection = new Connection(config.RPC_URL);
         this.quartzClientPromise = QuartzClient.fetchClient(connection);
     }
@@ -136,6 +138,8 @@ export class DataController {
             return next(new HttpException(400, "Newsletter is required"));
         }
         if (typeof newsletter !== "boolean") return next(new HttpException(400, "Newsletter must be a boolean"));
+
+        this.getLogger().info(`Adding ${email} to waitlist.`, { name, country, newsletter });
 
         try {
             const accessToken = await getGoogleAccessToken();

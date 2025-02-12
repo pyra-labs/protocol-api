@@ -4,14 +4,16 @@ import { bnToDecimal } from "../utils/helpers.js";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
+import { Controller } from "./controller.js";
 
-export class UserController {
+export class UserController extends Controller{
     private quartzClientPromise: Promise<QuartzClient>;
 
     private rateCache: Record<string, { depositRate: number; borrowRate: number; timestamp: number }> = {};
     private RATE_CACHE_DURATION = 60_000;
 
     constructor() {
+        super();
         const connection = new Connection(config.RPC_URL);
         this.quartzClientPromise = QuartzClient.fetchClient(connection);
     }

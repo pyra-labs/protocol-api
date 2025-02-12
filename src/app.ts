@@ -4,7 +4,7 @@ import cors from "cors";
 import hpp from "hpp";
 import helmet from "helmet";
 import { ErrorMiddleware, HttpException } from "./utils/errors.js";
-import type { Routes } from "./interfaces/routes.interface.js";
+import type { Routes } from "./routes/routes.js";
 import { AppLogger } from "@quartz-labs/logger";
 
 export class App extends AppLogger {
@@ -41,6 +41,7 @@ export class App extends AppLogger {
         })
 
         for (const route of this.routes) {
+            route.initLogger(this.logger, this.sendWarningEmail);
             this.app.use(route.path, route.router);
         }
 

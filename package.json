@@ -16,7 +16,7 @@
   },
   "license": "ISC",
   "dependencies": {
-    "@quartz-labs/logger": "^1.0.2",
+    "@quartz-labs/logger": "1.0.3",
     "@quartz-labs/sdk": "0.4.1",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.98.0",
