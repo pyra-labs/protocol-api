@@ -15,9 +15,9 @@ export abstract class Route {
 
     public initLogger(
         logger: Logger,
-        sendWarningEmail: (subject: string, message: string) => void
+        sendEmail: (subject: string, message: string) => void
     ) {
-        this.controller.setLogger(logger, sendWarningEmail);
+        this.controller.setLogger(logger, sendEmail);
     }
 
     protected abstract initializeRoutes(): void;

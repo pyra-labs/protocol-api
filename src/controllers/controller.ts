@@ -2,14 +2,14 @@ import type { Logger } from "@quartz-labs/logger";
 
 export abstract class Controller {
     private logger: Logger | undefined;
-    private sendWarningEmailMethod: ((subject: string, message: string) => void) | undefined;
+    private sendEmailMethod: ((subject: string, message: string) => void) | undefined;
 
     public setLogger(
         logger: Logger,
-        sendWarningEmail: (subject: string, message: string) => void
+        sendEmail: (subject: string, message: string) => void
     ) {
         this.logger = logger;
-        this.sendWarningEmailMethod = sendWarningEmail;
+        this.sendEmailMethod = sendEmail;
     }
 
     protected getLogger() {
@@ -20,11 +20,11 @@ export abstract class Controller {
         return this.logger;
     }
 
-    protected sendWarningEmail(subject: string, message: string) {
-        if (!this.sendWarningEmailMethod) {
-            throw new Error("Send warning email not set");
+    protected sendEmail(subject: string, message: string) {
+        if (!this.sendEmailMethod) {
+            throw new Error("Send email not set");
         }
 
-        this.sendWarningEmailMethod(subject, message);
+        this.sendEmailMethod(subject, message);
     }
 }

@@ -41,7 +41,7 @@ export class App extends AppLogger {
         })
 
         for (const route of this.routes) {
-            route.initLogger(this.logger, this.sendWarningEmail);
+            route.initLogger(this.logger, this.sendEmail);
             this.app.use(route.path, route.router);
         }
 

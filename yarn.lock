@@ -748,10 +748,10 @@
     bs58 "^5.0.0"
     jito-ts "^3.0.1"
 
-"@quartz-labs/logger@^1.0.2":
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/@quartz-labs/logger/-/logger-1.0.2.tgz#ce5cfa61684db15fd15ff1fffc0fd91168f7de51"
-  integrity sha512-t5TY3Jbk7lGaDGTl9w8jIxjDAHy+Mgjltw2Ax0SeAqjlY3S3cd0u1Sdasz9UiER/NoZuzViCjdR5R3p10S0NkA==
+"@quartz-labs/logger@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@quartz-labs/logger/-/logger-1.1.0.tgz#de67a49e61249336b593103cf5d0b5ffb3bcf956"
+  integrity sha512-3tqU5XtGfExK2rcKjfX4LRsoYedUGs8RM3NFCxxDXpS0BWS9MJSRup4nfyyQvHMT5Fix/Rhq/Sa8a663kQ8v0w==
   dependencies:
     "@biomejs/biome" "^1.9.4"
     nodemailer "^6.10.0"
