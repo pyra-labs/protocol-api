@@ -1,7 +1,7 @@
-import { Routes } from "./routes.js";
+import { Route } from "./route.js";
 import { UserController } from "../controllers/user.controller.js";
 
-export class UserRoute extends Routes {
+export class UserRoute extends Route {
     protected declare controller: UserController;
 
     constructor() {

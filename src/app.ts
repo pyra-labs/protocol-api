@@ -4,7 +4,7 @@ import cors from "cors";
 import hpp from "hpp";
 import helmet from "helmet";
 import { ErrorMiddleware, HttpException } from "./utils/errors.js";
-import type { Routes } from "./routes/routes.js";
+import type { Route } from "./routes/route.js";
 import { AppLogger } from "@quartz-labs/logger";
 
 export class App extends AppLogger {
@@ -12,9 +12,9 @@ export class App extends AppLogger {
     public port: number;
     public isListening = false;
     
-    private routes: Routes[];
+    private routes: Route[];
 
-    constructor(routes: Routes[]) {
+    constructor(routes: Route[]) {
         super({
             name: "API App"
         });
