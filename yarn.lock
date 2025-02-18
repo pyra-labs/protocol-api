@@ -822,10 +822,10 @@
     winston "^3.17.0"
     zod "^3.24.1"
 
-"@quartz-labs/sdk@0.6.2":
-  version "0.6.2"
-  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.6.2.tgz#b14d0a31db09cdb0ef6e03907beacc800597f3f5"
-  integrity sha512-a1PgKWjrN2BPkAbxiinBApzXpUr7PQPBbfSgwuwvV8Am8jEiu4fUH5pJMJsvX7EUx280JHAnwaNq88md/69tgg==
+"@quartz-labs/sdk@0.6.3":
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.6.3.tgz#923aedabeb9b89b5a71931802ca77a6c24664bc7"
+  integrity sha512-U0RXLK0MObN0QD3yJVaAyJxUSXuwRg3m3ddQ8c9cOnju+XbYIR45+PHdDaP9IURlpwgptlhT6J5MrEg876oIFw==
   dependencies:
     "@coral-xyz/anchor" "^0.29.0"
     "@drift-labs/sdk" "^2.103.0-beta.9"
