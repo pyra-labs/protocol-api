@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import config from "../config/config.js";
-import QueryString from "qs";
+import { MarketIndex } from "@quartz-labs/sdk";
 
 const baseUrl = `http://localhost:${config.PORT}/data`;
 
@@ -8,47 +8,17 @@ const baseUrl = `http://localhost:${config.PORT}/data`;
 describe("Test /data/price", () => {
     const routeUrl = `${baseUrl}/price`;
 
-    it("Should return the price", async () => {
-        const queryString = QueryString.stringify({
-            ids: ["solana"],
-        },  {arrayFormat: "comma"});
-        const response = await fetch(`${routeUrl}?${queryString}`);
+    it("Should return prices", async () => {
+        const response = await fetch(routeUrl);
         const body = await response.json();
 
         expect(response.status).toBe(200);
-        expect(body).toHaveProperty("solana");
-        expect(typeof body.solana).toBe("number");
-    });
-
-    it("Should return multiple prices", async () => {
-        const queryString = QueryString.stringify({
-            ids: ["solana", "bitcoin"],
-        }, {arrayFormat: "comma"});
-        const response = await fetch(`${routeUrl}?${queryString}`);
-        const body = await response.json();
-
-        expect(response.status).toBe(200);
-
-        expect(body).toHaveProperty("solana");
-        expect(typeof body.solana).toBe("number");
-
-        expect(body).toHaveProperty("bitcoin");
-        expect(typeof body.bitcoin).toBe("number");
-    });
-
-    it("Should return 400 if the ID is invalid", async () => {
-        const queryString = QueryString.stringify({
-            ids: ["notAnIdSoShouldFail"],
-        }, {arrayFormat: "comma"});
-        const response = await fetch(`${routeUrl}?${queryString}`);
-
-        expect(response.status).toBe(400);
-    });
-
-    it("Should return 400 if the ID is missing", async () => {
-        const response = await fetch(`${routeUrl}`);
-
-        expect(response.status).toBe(400);
+        console.log(body);
+        expect(body).toBeTypeOf("object");
+        expect(Object.entries(body)).toSatisfy((values: [MarketIndex, number][]) => 
+          values.every(([index, value]) => typeof value === "number" && Object.values(MarketIndex).includes(Number(index) as MarketIndex))
+        );
+        expect(Object.keys(body).length).toBe(Object.keys(MarketIndex).length);
     });
 })
 
@@ -86,16 +56,16 @@ describe("Test /data/tvl", () => {
         expect(response.status).toBe(200);
 
         expect(body).toHaveProperty("collateral");
-        expect(typeof body.collateral).toBe("number");
-        expect(body.collateral).toBeGreaterThan(0);
+        expect(typeof body.collateral).toBe("string");
+        expect(Number(body.collateral)).toBeGreaterThan(0);
 
         expect(body).toHaveProperty("loans");
-        expect(typeof body.loans).toBe("number");
-        expect(body.loans).toBeGreaterThan(0);
+        expect(typeof body.loans).toBe("string");
+        expect(Number(body.loans)).toBeGreaterThan(0);
 
         expect(body).toHaveProperty("net");
-        expect(typeof body.net).toBe("number");
-        expect(body.net).toBeGreaterThan(0);
+        expect(typeof body.net).toBe("string");
+        expect(Number(body.net)).toBeGreaterThan(0);
     });
 })
 
@@ -269,15 +239,11 @@ describe("Test /data/update-website-data", () => {
             method: "PUT"
         });
         const body = await response.json();
-        
+
         expect(response.status).toBe(200);
 
         expect(body).toHaveProperty("yield");
         expect(typeof body.yield).toBe("number");
         expect(body.yield).toBeGreaterThan(0);
-
-        expect(body).toHaveProperty("valueLost");
-        expect(typeof body.valueLost).toBe("number");
-        expect(body.valueLost).toBeGreaterThan(0);
     })
 })

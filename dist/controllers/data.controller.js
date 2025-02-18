@@ -1,17 +1,20 @@
 import { HttpException } from "../utils/errors.js";
 import { Connection } from "@solana/web3.js";
 import config from "../config/config.js";
-import { BASE_UNITS_PER_USDC, YIELD_CUT } from "../config/constants.js";
+import { YIELD_CUT } from "../config/constants.js";
 import { bnToDecimal, getGoogleAccessToken, getTimestamp } from "../utils/helpers.js";
 import { WebflowClient } from "webflow-api";
-import { QuartzClient, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
-export class DataController {
+import { MarketIndex, QuartzClient, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
+import { Controller } from "../types/controller.class.js";
+import { PriceFetcherService } from "../services/priceFetcher.service.js";
+export class DataController extends Controller {
     quartzClientPromise;
-    priceCache = {};
-    PRICE_CACHE_DURATION = 60_000;
+    priceFetcher;
     constructor() {
+        super();
         const connection = new Connection(config.RPC_URL);
         this.quartzClientPromise = QuartzClient.fetchClient(connection);
+        this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
     getPrice = async (req, res, next) => {
         const ids = req.query.ids;
@@ -19,40 +22,30 @@ export class DataController {
             return next(new HttpException(400, "ID is required"));
         const decodedIds = decodeURIComponent(ids);
         const idArray = decodedIds.split(",");
+        const isMarketIndex = (id) => {
+            try {
+                const num = Number(id);
+                return Object.values(MarketIndex).includes(num);
+            }
+            catch {
+                return false;
+            }
+        };
         try {
-            const now = Date.now();
-            const uncachedIds = idArray.filter(id => {
-                const cached = this.priceCache[id];
-                return !cached || (now - cached.timestamp) > this.PRICE_CACHE_DURATION;
-            });
-            if (uncachedIds.length > 0) {
-                const data = await retryWithBackoff(async () => {
-                    const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${uncachedIds.join(',')}&vs_currencies=usd`);
-                    if (!response.ok) {
-                        throw new HttpException(400, "Failed to fetch data from CoinGecko");
-                    }
-                    const body = await response.json();
-                    return body;
-                }, 3);
-                for (const id of Object.keys(data)) {
-                    if (!data[id])
-                        throw new Error(`Invalid data fetched for ${id}`);
-                    this.priceCache[id] = {
-                        price: data[id].usd,
-                        timestamp: now
-                    };
-                }
+            let marketIndices = [];
+            if (idArray.some(id => !isMarketIndex(id))) { // TODO: Only allow market indices, not coingecko ids
+                marketIndices = idArray.map(id => {
+                    const marketIndexStr = Object.entries(TOKENS).find(([_, token]) => token.coingeckoPriceId === id)?.[0];
+                    if (!marketIndexStr)
+                        throw new Error(`Invalid market index for ${id}`);
+                    return Number(marketIndexStr);
+                });
             }
-            const pricesUsd = idArray.reduce((acc, id) => {
-                if (this.priceCache[id]) {
-                    acc[id] = this.priceCache[id].price;
-                }
-                return acc;
-            }, {});
-            if (Object.keys(pricesUsd).length === 0) {
-                return next(new HttpException(400, "Invalid ID"));
+            else {
+                marketIndices = idArray.map(id => Number(id));
             }
-            res.status(200).json(pricesUsd);
+            const prices = await this.priceFetcher.getPrices(marketIndices);
+            res.status(200).json(prices);
         }
         catch (error) {
             next(error);
@@ -79,19 +72,28 @@ export class DataController {
                 const users = await quartzClient.getMultipleQuartzAccounts(owners);
                 return users;
             });
-            let totalCollateralInUsdc = 0;
-            let totalLoansInUsdc = 0;
+            let totalCollateralValue = 0;
+            let totalLoansValue = 0;
+            const prices = await this.priceFetcher.getPrices([...MarketIndex]);
             for (const user of users) {
                 if (!user)
                     continue; // TODO: Remove once deleted Drift users is fixed
-                totalCollateralInUsdc += user.getTotalCollateralValue();
-                totalLoansInUsdc += user.getMaintenanceMarginRequirement();
+                const balances = await user.getMultipleTokenBalances([...MarketIndex]);
+                for (const [index, balance] of Object.entries(balances)) {
+                    const price = prices[Number(index)];
+                    const value = balance.toNumber() * price;
+                    if (value > 0) {
+                        totalCollateralValue += value;
+                    }
+                    else {
+                        totalLoansValue += value;
+                    }
+                }
             }
-            const baseUnitsToUsd = (baseUnits) => Number((baseUnits / BASE_UNITS_PER_USDC).toFixed(2));
             res.status(200).json({
-                collateral: baseUnitsToUsd(totalCollateralInUsdc),
-                loans: baseUnitsToUsd(totalLoansInUsdc),
-                net: baseUnitsToUsd(totalCollateralInUsdc - totalLoansInUsdc)
+                collateral: totalCollateralValue.toFixed(2),
+                loans: totalLoansValue.toFixed(2),
+                net: (totalCollateralValue - totalLoansValue).toFixed(2)
             });
         }
         catch (error) {
@@ -116,6 +118,7 @@ export class DataController {
         }
         if (typeof newsletter !== "boolean")
             return next(new HttpException(400, "Newsletter must be a boolean"));
+        this.getLogger().info(`Adding ${email} to waitlist.`, { name, country, newsletter });
         try {
             const accessToken = await getGoogleAccessToken();
             // Ensure waitlist is not already present
@@ -124,12 +127,14 @@ export class DataController {
                     'Authorization': `Bearer ${accessToken}`,
                 }
             });
-            if (!checkResponse.ok)
-                throw new Error('Failed to find spreadsheet');
+            if (!checkResponse.ok) {
+                throw new Error(`Failed to find spreadsheet. Submitted data: ${JSON.stringify({ email, name, country, newsletter })}`);
+            }
             const data = (await checkResponse.json());
             const rows = data.values?.slice(1);
-            if (!rows || rows.length === 0)
-                throw new Error("Failed to fetch data from spreadsheet");
+            if (!rows || rows.length === 0) {
+                throw new Error(`Failed to fetch data from spreadsheet. Submitted data: ${JSON.stringify({ email, name, country, newsletter })}`);
+            }
             if (rows.some((row) => row[0] === email)) {
                 res.status(200).json({ message: "Email already exists in waitlist" });
                 return;
@@ -145,8 +150,9 @@ export class DataController {
                     values: [[getTimestamp(), email, name, country, newsletter ? "TRUE" : "FALSE", "1"]]
                 })
             });
-            if (!appendResponse.ok)
-                throw new Error('Failed to update spreadsheet');
+            if (!appendResponse.ok) {
+                throw new Error(`Failed to update spreadsheet. Submitted data: ${JSON.stringify({ email, name, country, newsletter })}`);
+            }
             // Update Webflow waitlist count
             const newWaitlistCount = rows.length + 1;
             const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });

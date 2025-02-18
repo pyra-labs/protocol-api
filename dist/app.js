@@ -32,6 +32,7 @@ export class App extends AppLogger {
             res.status(200).send({ result: "ok" });
         });
         for (const route of this.routes) {
+            route.initLogger(this.logger, this.sendEmail);
             this.app.use(route.path, route.router);
         }
         this.app.all("*", () => {
@@ -47,10 +48,11 @@ export class App extends AppLogger {
             this.logger.warn("App is already listening");
             return;
         }
-        this.app.listen(this.port, () => {
+        await new Promise((resolve) => this.app.listen(this.port, () => {
             this.isListening = true;
             this.logger.info(`App listening on port ${this.port}`);
-        });
+            resolve(true);
+        }));
     }
 }
 //# sourceMappingURL=app.js.map

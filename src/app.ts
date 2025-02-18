@@ -4,7 +4,7 @@ import cors from "cors";
 import hpp from "hpp";
 import helmet from "helmet";
 import { ErrorMiddleware, HttpException } from "./utils/errors.js";
-import type { Route } from "./routes/route.js";
+import type { Route } from "./types/route.class.js";
 import { AppLogger } from "@quartz-labs/logger";
 
 export class App extends AppLogger {
@@ -61,9 +61,10 @@ export class App extends AppLogger {
             return;
         }
 
-        this.app.listen(this.port, () => {
+        await new Promise((resolve) => this.app.listen(this.port, () => {
             this.isListening = true;
             this.logger.info(`App listening on port ${this.port}`);
-        });
+            resolve(true);
+        }));
     }
 }

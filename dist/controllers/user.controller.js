@@ -2,14 +2,19 @@ import config from "../config/config.js";
 import { bnToDecimal } from "../utils/helpers.js";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
-import { QuartzClient, MarketIndex, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
-export class UserController {
+import { QuartzClient, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
+import { Controller } from "../types/controller.class.js";
+import { PriceFetcherService } from "../services/priceFetcher.service.js";
+export class UserController extends Controller {
     quartzClientPromise;
+    priceFetcher;
     rateCache = {};
     RATE_CACHE_DURATION = 60_000;
     constructor() {
+        super();
         const connection = new Connection(config.RPC_URL);
         this.quartzClientPromise = QuartzClient.fetchClient(connection);
+        this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
     validateAddress(address) {
         try {
@@ -90,11 +95,9 @@ export class UserController {
             const address = this.validateAddress(req.query.address);
             const user = await this.getQuartzUser(address);
             const balancesBN = await retryWithBackoff(() => user.getMultipleTokenBalances(marketIndices), 3);
-            console.log(balancesBN);
             const balances = Object.entries(balancesBN).reduce((acc, [index, balance]) => Object.assign(acc, {
                 [index]: balance.toNumber()
             }), {});
-            console.log(balances);
             res.status(200).json(balances);
         }
         catch (error) {
@@ -119,6 +122,17 @@ export class UserController {
             const user = await this.getQuartzUser(address);
             const health = user.getHealth();
             res.status(200).json(health);
+        }
+        catch (error) {
+            next(error);
+        }
+    };
+    getSpendableBalance = async (req, res, next) => {
+        try {
+            const address = this.validateAddress(req.query.address);
+            const user = await this.getQuartzUser(address);
+            const spendableBalance = await user.getSpendableBalanceUsdcBaseUnits();
+            res.status(200).json(spendableBalance);
         }
         catch (error) {
             next(error);

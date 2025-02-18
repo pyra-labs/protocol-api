@@ -1,6 +1,6 @@
 import type { Logger } from "@quartz-labs/logger";
 import { Router } from "express";
-import type { Controller } from "../controllers/controller.js";
+import type { Controller } from "./controller.class.js";
 
 export abstract class Route {
     public router = Router();

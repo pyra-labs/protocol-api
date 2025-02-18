@@ -244,3 +244,34 @@ describe("Test /user/health", () => {
         expect(response.status).toBe(400);
     });
 })
+
+
+describe("Test /user/spendable-balance", () => {
+    const routeUrl = `${baseUrl}/spendable-balance`;
+    
+    it("Should return the spendable balance", async () => {
+        const queryString = QueryString.stringify({
+            address: testWallet,
+        },  {arrayFormat: "comma"});
+        const response = await fetch(`${routeUrl}?${queryString}`);
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(typeof body).toBe("number");
+        expect(body).toBeGreaterThanOrEqual(0);
+    });
+
+    it("Should return 400 if the address is not a Quartz user", async () => {
+        const queryString = QueryString.stringify({
+            address: invalidWallet,
+        },  {arrayFormat: "comma"});
+        const response = await fetch(`${routeUrl}?${queryString}`);
+
+        expect(response.status).toBe(400);
+    });
+
+    it("Should return 400 if the address is missing", async () => {
+        const response = await fetch(`${routeUrl}`);
+        expect(response.status).toBe(400);
+    });
+})

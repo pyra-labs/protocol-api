@@ -4,10 +4,12 @@ import { bnToDecimal } from "../utils/helpers.js";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
-import { Controller } from "./controller.js";
+import { Controller } from "../types/controller.class.js";
+import { PriceFetcherService } from "../services/priceFetcher.service.js";
 
 export class UserController extends Controller{
     private quartzClientPromise: Promise<QuartzClient>;
+    private priceFetcher: PriceFetcherService;
 
     private rateCache: Record<string, { depositRate: number; borrowRate: number; timestamp: number }> = {};
     private RATE_CACHE_DURATION = 60_000;
@@ -16,6 +18,7 @@ export class UserController extends Controller{
         super();
         const connection = new Connection(config.RPC_URL);
         this.quartzClientPromise = QuartzClient.fetchClient(connection);
+        this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
 
     private validateAddress(address: string): PublicKey {
@@ -162,6 +165,18 @@ export class UserController extends Controller{
             const user = await this.getQuartzUser(address);
             const health = user.getHealth();
             res.status(200).json(health);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    public getSpendableBalance = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const address = this.validateAddress(req.query.address as string);
+            const user = await this.getQuartzUser(address);
+            const spendableBalance = await user.getSpendableBalanceUsdcBaseUnits();
+
+            res.status(200).json(spendableBalance);
         } catch (error) {
             next(error);
         }

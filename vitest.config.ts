@@ -6,11 +6,13 @@ export default defineConfig({
       plugins: [tsconfigPaths()],
       test: {
             exclude: ["**/node_modules/**", "**/build/**"],
+            include: ["src/**/*.test.ts"],
             poolOptions: {
                   forks: {
                         singleFork: true,
                   },
             },
+            globals: true,
             globalSetup: ["./globalSetup.ts"],
             testTimeout: 300_000,
       },

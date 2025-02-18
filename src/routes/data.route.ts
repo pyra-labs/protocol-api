@@ -1,4 +1,4 @@
-import { Route } from "./route.js";
+import { Route } from "../types/route.class.js";
 import { DataController } from "../controllers/data.controller.js";
 
 export class DataRoute extends Route {
