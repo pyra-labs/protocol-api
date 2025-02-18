@@ -109,8 +109,20 @@ export class UserController extends Controller {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices);
             const address = this.validateAddress(req.query.address);
             const user = await this.getQuartzUser(address);
-            const withdrawLimits = await retryWithBackoff(() => user.getMultipleWithdrawalLimits(marketIndices), 3);
+            const withdrawLimits = await retryWithBackoff(() => user.getMultipleWithdrawalLimits(marketIndices, true), 3);
             res.status(200).json(withdrawLimits);
+        }
+        catch (error) {
+            next(error);
+        }
+    };
+    getBorrowLimit = async (req, res, next) => {
+        try {
+            const marketIndices = this.validateMarketIndices(req.query.marketIndices);
+            const address = this.validateAddress(req.query.address);
+            const user = await this.getQuartzUser(address);
+            const borrowLimits = await retryWithBackoff(() => user.getMultipleWithdrawalLimits(marketIndices, false), 3);
+            res.status(200).json(borrowLimits);
         }
         catch (error) {
             next(error);

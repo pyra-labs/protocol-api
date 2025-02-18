@@ -4,7 +4,7 @@ import config from "../config/config.js";
 import { YIELD_CUT } from "../config/constants.js";
 import { bnToDecimal, getGoogleAccessToken, getTimestamp } from "../utils/helpers.js";
 import { WebflowClient } from "webflow-api";
-import { MarketIndex, QuartzClient, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
+import { baseUnitToDecimal, MarketIndex, QuartzClient, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
 import { PriceFetcherService } from "../services/priceFetcher.service.js";
 export class DataController extends Controller {
@@ -16,35 +16,9 @@ export class DataController extends Controller {
         this.quartzClientPromise = QuartzClient.fetchClient(connection);
         this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
-    getPrice = async (req, res, next) => {
-        const ids = req.query.ids;
-        if (!ids)
-            return next(new HttpException(400, "ID is required"));
-        const decodedIds = decodeURIComponent(ids);
-        const idArray = decodedIds.split(",");
-        const isMarketIndex = (id) => {
-            try {
-                const num = Number(id);
-                return Object.values(MarketIndex).includes(num);
-            }
-            catch {
-                return false;
-            }
-        };
+    getPrice = async (_, res, next) => {
         try {
-            let marketIndices = [];
-            if (idArray.some(id => !isMarketIndex(id))) { // TODO: Only allow market indices, not coingecko ids
-                marketIndices = idArray.map(id => {
-                    const marketIndexStr = Object.entries(TOKENS).find(([_, token]) => token.coingeckoPriceId === id)?.[0];
-                    if (!marketIndexStr)
-                        throw new Error(`Invalid market index for ${id}`);
-                    return Number(marketIndexStr);
-                });
-            }
-            else {
-                marketIndices = idArray.map(id => Number(id));
-            }
-            const prices = await this.priceFetcher.getPrices(marketIndices);
+            const prices = await this.priceFetcher.getPrices();
             res.status(200).json(prices);
         }
         catch (error) {
@@ -74,19 +48,20 @@ export class DataController extends Controller {
             });
             let totalCollateralValue = 0;
             let totalLoansValue = 0;
-            const prices = await this.priceFetcher.getPrices([...MarketIndex]);
+            const prices = await this.priceFetcher.getPrices();
             for (const user of users) {
                 if (!user)
                     continue; // TODO: Remove once deleted Drift users is fixed
                 const balances = await user.getMultipleTokenBalances([...MarketIndex]);
                 for (const [index, balance] of Object.entries(balances)) {
-                    const price = prices[Number(index)];
-                    const value = balance.toNumber() * price;
+                    const marketIndex = Number(index);
+                    const price = prices[marketIndex];
+                    const value = baseUnitToDecimal(balance.toNumber(), marketIndex) * price;
                     if (value > 0) {
                         totalCollateralValue += value;
                     }
                     else {
-                        totalLoansValue += value;
+                        totalLoansValue += Math.abs(value);
                     }
                 }
             }
@@ -188,18 +163,6 @@ export class DataController extends Controller {
     };
     updateWebsiteData = async (_, res, next) => {
         const quartzClient = await this.quartzClientPromise;
-        const usdLost = 8592500000;
-        const assetsLost = {
-            "bitcoin": 1226903,
-            "litecoin": 56733,
-            "nem": 9000000,
-            "nano": 17000000,
-            "ripple": 48100000,
-            "eos": 3000000,
-            "ethereum": 11543,
-            "cardano": 2500000,
-            "tether": 20800000
-        };
         try {
             const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });
             // Get USDC deposit rate
@@ -221,40 +184,7 @@ export class DataController extends Controller {
                     count: apyAfterCutRounded
                 }
             });
-            // Get funds lost to custodians
-            const ids = Object.keys(assetsLost).join(',');
-            const mockReq = { query: { ids } };
-            let prices = {};
-            await new Promise((resolve) => {
-                const mockRes = {
-                    status: () => ({
-                        json: (data) => {
-                            prices = data;
-                            resolve();
-                        }
-                    })
-                };
-                this.getPrice(mockReq, mockRes, next);
-            });
-            let totalValueLost = usdLost;
-            for (const [coin, amount] of Object.entries(assetsLost)) {
-                const price = prices[coin];
-                if (!price)
-                    throw new Error("Price not found");
-                const value = price * amount;
-                totalValueLost += value;
-            }
-            const totalValueLostBillions = Math.trunc(totalValueLost / 1_000_000_000);
-            // Update funds lost to custodians
-            await webflowClient.collections.items.updateItemLive("67504dd7fde047775f88c371", "67504dd7fde047775f88c3d0", {
-                id: "67504dd7fde047775f88c3d0",
-                fieldData: {
-                    name: "Value Lost",
-                    slug: "value-lost",
-                    count: totalValueLostBillions
-                }
-            });
-            res.status(200).json({ yield: apyAfterCutRounded, valueLost: totalValueLostBillions });
+            res.status(200).json({ yield: apyAfterCutRounded, valueLost: 0 });
         }
         catch (error) {
             next(error);

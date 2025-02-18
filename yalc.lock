@@ -1,0 +1,10 @@
+{
+  "version": "v1",
+  "packages": {
+    "@quartz-labs/sdk": {
+      "signature": "dc5f8caf05a973a4b1e2b94d6f062b95",
+      "file": true,
+      "replaced": "0.6.1"
+    }
+  }
+}
