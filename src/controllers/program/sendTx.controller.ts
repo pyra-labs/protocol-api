@@ -37,7 +37,7 @@ export class SendTxController extends BaseProgramController {
             res.status(200).json({ signature });
         } catch (error) {
             console.error(error);
-            throw new HttpException(500, "Internal server error");
+            next(error);
         }
     }
 }

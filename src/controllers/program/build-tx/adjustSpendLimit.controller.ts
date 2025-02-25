@@ -15,22 +15,22 @@ export class AdjustSpendLimitController extends BaseProgramController {
         try {
             const address = new PublicKey(req.query.address as string);
             if (!address) {
-                return next(new HttpException(400, "Wallet address is required"));
+                throw new HttpException(400, "Wallet address is required");
             }
 
             const spendLimitTransactionBaseUnits = Number(req.query.spendLimitTransactionBaseUnits);
             if (!spendLimitTransactionBaseUnits) {
-                return next(new HttpException(400, "Wallet address is required"));
+                throw new HttpException(400, "Wallet address is required");
             }
 
             const spendLimitTimeframeBaseUnits = Number(req.query.spendLimitTimeframeBaseUnits);
             if (!spendLimitTimeframeBaseUnits) {
-                return next(new HttpException(400, "Wallet address is required"));
+                throw new HttpException(400, "Wallet address is required");
             }
 
             let spendLimitTimeframe = Number(req.query.spendLimitTimeframe);
             if (!spendLimitTimeframe) {
-                return next(new HttpException(400, "Wallet address is required"));
+                throw new HttpException(400, "Wallet address is required");
             }
 
             const spendLimitTimeframeTyped = spendLimitTimeframe as SpendLimitTimeframe;
@@ -42,7 +42,7 @@ export class AdjustSpendLimitController extends BaseProgramController {
             try {
                 user = await quartzClient.getQuartzAccount(address);
             } catch {
-                return next(new HttpException(400, "User not found"));
+                throw new HttpException(400, "User not found");
             }
 
             const { 
@@ -60,7 +60,8 @@ export class AdjustSpendLimitController extends BaseProgramController {
             transaction.sign(signers);
             
             const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
-            return res.status(200).json({ transaction: serializedTx });
+            res.status(200).json({ transaction: serializedTx });
+            return;
         } catch (error) {
             this.getLogger().error(`Error building transaction: ${error}`);
             next(error);

@@ -16,14 +16,14 @@ export class AccountStatusController extends BaseProgramController {
         try {
             const address = req.query.wallet as string;
             if (!address) {
-                return next(new HttpException(400, "Wallet address is required"));
+                throw new HttpException(400, "Wallet address is required");
             }
 
             let pubkey;
             try {
                 pubkey = new PublicKey(address);
             } catch {
-                return next(new HttpException(400, "Invalid wallet address"));
+                throw new HttpException(400, "Invalid wallet address");
             }
 
             const [hasVaultHistory, isMissingBetaKey, isVaultInitialized, requiresUpgrade] = await Promise.all([
@@ -34,17 +34,22 @@ export class AccountStatusController extends BaseProgramController {
             ]);
             
             if (!isVaultInitialized && hasVaultHistory) {
-                return res.status(200).json({ status: AccountStatus.CLOSED });
+                res.status(200).json({ status: AccountStatus.CLOSED });
+                return;
             } else if (isMissingBetaKey) {
-                return res.status(200).json({ status: AccountStatus.NO_BETA_KEY });
+                res.status(200).json({ status: AccountStatus.NO_BETA_KEY });
+                return;
             } else if (isVaultInitialized) {
                 if (requiresUpgrade) {
-                    return res.status(200).json({ status: AccountStatus.UPGRADE_REQUIRED });
+                    res.status(200).json({ status: AccountStatus.UPGRADE_REQUIRED });
+                    return;
                 } else {
-                    return res.status(200).json({ status: AccountStatus.INITIALIZED });
+                    res.status(200).json({ status: AccountStatus.INITIALIZED });
+                    return;
                 }
             } else {
-                return res.status(200).json({ status: AccountStatus.NOT_INITIALIZED });
+                res.status(200).json({ status: AccountStatus.NOT_INITIALIZED });
+                return;
             }
         } catch (error) {
             next(error);
