@@ -6,7 +6,7 @@ import { HttpException } from "../../../utils/errors.js";
 import { SpendLimitTimeframe } from '../../../types/enums/SpendLimitTimeframe.enum.js';
 import { BaseProgramController } from '../baseProgram.controller.js';
 
-export class BuildTxController extends BaseProgramController {
+export class AdjustSpendLimitController extends BaseProgramController {
     constructor() {
         super();
     }
