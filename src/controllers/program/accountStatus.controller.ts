@@ -1,25 +1,15 @@
-export const dynamic = 'force-dynamic';
-
 import { getVaultPublicKey, retryWithBackoff } from '@quartz-labs/sdk';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import type { NextFunction, Request, Response } from 'express';
-import { Controller } from '../../types/controller.class.js';
 import config from '../../config/config.js';
 import { AccountStatus } from '../../types/enums/AccountStatus.enum.js';
 import { HttpException } from '../../utils/errors.js';
+import { BaseProgramController } from './baseProgram.controller.js';
 
 
-export class AccountStatusController extends Controller {
-    private connection: Connection;
-
+export class AccountStatusController extends BaseProgramController {
     constructor() {
         super();
-        try {
-            this.connection = new Connection(config.RPC_URL);
-        } catch (error) {
-            this.getLogger().error("Error validating environment variables: ", error);
-            throw new Error("Internal server configuration error");
-        }
     }
 
     public getAccountStatus = async (req: Request, res: Response, next: NextFunction) => {
