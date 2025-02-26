@@ -1,12 +1,23 @@
 import type { NextFunction, Request, Response } from 'express';
-import { PublicKey, TransactionExpiredBlockheightExceededError } from '@solana/web3.js';
+import { TransactionExpiredBlockheightExceededError, VersionedTransaction } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
-import { DEFAULT_CARD_TIMEFRAME, DEFAULT_CARD_TIMEFRAME_LIMIT, DEFAULT_CARD_TIMEFRAME_RESET, DEFAULT_CARD_TRANSACTION_LIMIT } from '../../config/constants.js';
-import { buildTransaction } from '../../utils/helpers.js';
-import { connection, quartzClient } from '../../index.js';
+import { connection } from '../../index.js';
 import { Controller } from '../../types/controller.class.js';
+import { retryWithBackoff } from '@quartz-labs/sdk';
+import { z } from 'zod';
 
-export class ConfirmTxController extends Controller {
+const transactionSchema = z.object({
+    transaction: z.string()
+        .regex(/^[A-Za-z0-9+/]+={0,2}$/, 'Must be a valid base64 string')
+        .transform((val) => {
+            const buffer = Buffer.from(val, 'base64');
+            VersionedTransaction.deserialize(buffer); // Validate it's a valid VersionedTransaction
+            return buffer;
+        }),
+    skipPreflight: z.boolean().optional().default(false),
+});
+
+export class TxController extends Controller {
     private readonly MAX_DURATION = 70; // 70 second maximum in Vercel
 
     public confirmTx = async (req: Request, res: Response, next: NextFunction) => {
@@ -56,32 +67,25 @@ export class ConfirmTxController extends Controller {
         }
     }
 
-    async initAccount(req: Request, res: Response, next: NextFunction) {
-        try {
-            const address = new PublicKey(req.query.address as string);
-            if (!address) {
-                throw new HttpException(400, "Wallet address is required");
-            }
+    public sendTransaction = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 
-            const {
-                ixs,
-                lookupTables,
-                signers
-            } = await quartzClient.makeInitQuartzUserIxs(
-                address,
-                DEFAULT_CARD_TRANSACTION_LIMIT,
-                DEFAULT_CARD_TIMEFRAME_LIMIT,
-                DEFAULT_CARD_TIMEFRAME,
-                DEFAULT_CARD_TIMEFRAME_RESET
+        let body: z.infer<typeof transactionSchema>;
+        try {
+            body = transactionSchema.parse(req.body);
+        } catch (error) {
+            throw new HttpException(400, "Invalid transaction");
+        }
+
+        try {
+            const signature = await retryWithBackoff(
+                async () => connection.sendRawTransaction(body.transaction, {
+                    skipPreflight: body.skipPreflight,
+                }),
+                3
             );
 
-            const transaction = await buildTransaction(connection, ixs, address, lookupTables);
-            transaction.sign(signers);
-
-            const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
-            res.status(200).json({ transaction: serializedTx });
-            return;
-
+            console.log("Signature", signature);
+            res.status(200).json({ signature });
         } catch (error) {
             console.error(error);
             next(error);

@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic';
-
 import { PublicKey } from '@solana/web3.js';
 import { QuartzClient, QuartzUser } from '@quartz-labs/sdk';
 import { HttpException } from '../../../utils/errors.js';
