@@ -6,15 +6,16 @@ import helmet from "helmet";
 import { ErrorMiddleware, HttpException } from "./utils/errors.js";
 import type { Route } from "./types/route.class.js";
 import { AppLogger } from "@quartz-labs/logger";
+import type { CompositeRoute } from "./routes/compositeRoute.js";
 
 export class App extends AppLogger {
     public app: express.Application;
     public port: number;
     public isListening = false;
     
-    private routes: Route[];
+    private routes: (Route | CompositeRoute)[];
 
-    constructor(routes: Route[]) {
+    constructor(routes: (Route | CompositeRoute)[]) {
         super({
             name: "API App"
         });
