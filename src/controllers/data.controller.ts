@@ -1,22 +1,19 @@
 import type { NextFunction, Request, Response } from "express";
 import { HttpException } from "../utils/errors.js";
-import { Connection } from "@solana/web3.js";
 import config from "../config/config.js";
 import { YIELD_CUT } from "../config/constants.js";
 import { bnToDecimal, getGoogleAccessToken, getTimestamp } from "../utils/helpers.js";
 import { WebflowClient } from "webflow-api";
-import { baseUnitToDecimal, MarketIndex, QuartzClient, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
+import { baseUnitToDecimal, MarketIndex, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
 import { PriceFetcherService } from "../services/priceFetcher.service.js";
+import { quartzClient } from "../index.js";
 
 export class DataController extends Controller {
-    private quartzClientPromise: Promise<QuartzClient>;
     private priceFetcher: PriceFetcherService;
 
     constructor() {
         super();
-        const connection = new Connection(config.RPC_URL);
-        this.quartzClientPromise = QuartzClient.fetchClient(connection);
         this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
 
@@ -31,8 +28,6 @@ export class DataController extends Controller {
     }
 
     public getUsers = async (_: Request, res: Response, next: NextFunction) => {
-        const quartzClient = await this.quartzClientPromise;
-
         try {
             const owners = await retryWithBackoff(
                 () => quartzClient.getAllQuartzAccountOwnerPubkeys()
@@ -48,8 +43,6 @@ export class DataController extends Controller {
     }
 
     public getTVL = async (_: Request, res: Response, next: NextFunction) => {
-        const quartzClient = await this.quartzClientPromise;
-
         try {
             const users = await retryWithBackoff(
                 async () => {
@@ -189,8 +182,6 @@ export class DataController extends Controller {
     }
 
     public updateWebsiteData = async (_: Request, res: Response, next: NextFunction) => {
-        const quartzClient = await this.quartzClientPromise;
-
         try {   
             const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });
 

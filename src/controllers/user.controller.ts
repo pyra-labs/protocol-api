@@ -3,12 +3,12 @@ import type { NextFunction, Request, Response } from "express";
 import { bnToDecimal } from "../utils/helpers.js";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
-import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
+import { type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
 import { PriceFetcherService } from "../services/priceFetcher.service.js";
+import { quartzClient } from "../index.js";
 
 export class UserController extends Controller{
-    private quartzClientPromise: Promise<QuartzClient>;
     private priceFetcher: PriceFetcherService;
 
     private rateCache: Record<string, { depositRate: number; borrowRate: number; timestamp: number }> = {};
@@ -17,7 +17,6 @@ export class UserController extends Controller{
     constructor() {
         super();
         const connection = new Connection(config.RPC_URL);
-        this.quartzClientPromise = QuartzClient.fetchClient(connection);
         this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
 
@@ -32,7 +31,6 @@ export class UserController extends Controller{
 
     private async getQuartzUser(pubkey: PublicKey): Promise<QuartzUser> {
         try {
-            const quartzClient = await this.quartzClientPromise;
             return await retryWithBackoff(
                 () => quartzClient.getQuartzAccount(pubkey),
                 2
@@ -62,8 +60,6 @@ export class UserController extends Controller{
 
     public getRate = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const quartzClient = await this.quartzClientPromise;
-
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
             const now = Date.now();

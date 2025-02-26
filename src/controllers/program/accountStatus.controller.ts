@@ -4,10 +4,11 @@ import type { NextFunction, Request, Response } from 'express';
 import config from '../../config/config.js';
 import { AccountStatus } from '../../types/enums/AccountStatus.enum.js';
 import { HttpException } from '../../utils/errors.js';
-import { BaseProgramController } from './baseProgram.controller.js';
+import { Controller } from '../../types/controller.class.js';
+import { connection } from '../../index.js';
 
 
-export class AccountStatusController extends BaseProgramController {
+export class AccountStatusController extends Controller {
     constructor() {
         super();
     }
@@ -59,7 +60,7 @@ export class AccountStatusController extends BaseProgramController {
     private async checkHasVaultHistory(wallet: PublicKey): Promise<boolean> {
         const vaultPda = getVaultPublicKey(wallet);
         const signatures = await retryWithBackoff(
-            async () => this.connection.getSignaturesForAddress(vaultPda),
+            async () => connection.getSignaturesForAddress(vaultPda),
             4
         );
         const isSignatureHistory = (signatures.length > 0);
@@ -69,7 +70,7 @@ export class AccountStatusController extends BaseProgramController {
     private async checkIsMissingBetaKey(address: PublicKey): Promise<boolean> { 
         if (!config.REQUIRE_BETA_KEY) return false;
 
-        const response = await fetch(this.connection.rpcEndpoint, {
+        const response = await fetch(connection.rpcEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -100,7 +101,7 @@ export class AccountStatusController extends BaseProgramController {
     private async checkIsVaultInitialized(wallet: PublicKey): Promise<boolean> {
         const vaultPda = getVaultPublicKey(wallet);
         const vaultPdaAccount = await retryWithBackoff(
-            async () => this.connection.getAccountInfo(vaultPda),
+            async () => connection.getAccountInfo(vaultPda),
             2
         );
         return (vaultPdaAccount !== null);
@@ -109,7 +110,7 @@ export class AccountStatusController extends BaseProgramController {
     private async checkRequiresUpgrade(wallet: PublicKey): Promise<boolean> {
         const vaultPda = getVaultPublicKey(wallet);
         const vaultPdaAccount = await retryWithBackoff(
-            async () => this.connection.getAccountInfo(vaultPda),
+            async () => connection.getAccountInfo(vaultPda),
             2
         );
         if (vaultPdaAccount === null) return false;

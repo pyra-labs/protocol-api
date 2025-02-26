@@ -1,12 +1,16 @@
 import type { NextFunction, Request, Response } from 'express';
 import { PublicKey } from '@solana/web3.js';
-import { BaseProgramController } from './baseProgram.controller.js';
 import { HttpException } from '../../utils/errors.js';
 import { buildAdjustSpendLimitTransaction } from './build-tx/adjustSpendLimit.js';
 import { DEFAULT_CARD_TIMEFRAME, DEFAULT_CARD_TIMEFRAME_LIMIT, DEFAULT_CARD_TIMEFRAME_RESET, DEFAULT_CARD_TRANSACTION_LIMIT } from '../../config/constants.js';
 import { buildTransaction } from '../../utils/helpers.js';
+import { connection, quartzClient } from '../../index.js';
+import { Controller } from '../../types/controller.class.js';
 
-export class BuildTxController extends BaseProgramController {
+export class BuildTxController extends Controller {
+    constructor() {
+        super();
+    }
 
     public buildSpendLimitTx = async (req: Request, res: Response, next: NextFunction) => {
         try {
@@ -35,8 +39,8 @@ export class BuildTxController extends BaseProgramController {
                 spendLimitTransactionBaseUnits,
                 spendLimitTimeframeBaseUnits,
                 spendLimitTimeframe,
-                this.connection,
-                await this.quartzClientPromise
+                connection,
+                quartzClient
             );
             
             res.status(200).json({ transaction: serializedTx });
@@ -53,7 +57,6 @@ export class BuildTxController extends BaseProgramController {
             if (!address) {
                 throw new HttpException(400, "Wallet address is required");
             }
-            const quartzClient = await this.quartzClientPromise;
             const {
                 ixs,
                 lookupTables,
@@ -66,7 +69,7 @@ export class BuildTxController extends BaseProgramController {
                 DEFAULT_CARD_TIMEFRAME_RESET
             );
 
-            const transaction = await buildTransaction(this.connection, ixs, address, lookupTables);
+            const transaction = await buildTransaction(connection, ixs, address, lookupTables);
             transaction.sign(signers);
 
             const serializedTx = Buffer.from(transaction.serialize()).toString("base64");

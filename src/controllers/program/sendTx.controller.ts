@@ -2,8 +2,9 @@ import type { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
 import { VersionedTransaction } from '@solana/web3.js';
 import { retryWithBackoff } from '@quartz-labs/sdk';
-import { BaseProgramController } from './baseProgram.controller.js';
 import { HttpException } from '../../utils/errors.js';
+import { Controller } from '../../types/controller.class.js';
+import { connection } from '../../index.js';
 
 const transactionSchema = z.object({
     transaction: z.string()
@@ -16,7 +17,7 @@ const transactionSchema = z.object({
     skipPreflight: z.boolean().optional().default(false),
 });
 
-export class SendTxController extends BaseProgramController {
+export class SendTxController extends Controller {
 
     public sendTransaction = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 
@@ -29,11 +30,13 @@ export class SendTxController extends BaseProgramController {
 
         try {
             const signature = await retryWithBackoff(
-                async () => this.connection.sendRawTransaction(body.transaction, {
+                async () => connection.sendRawTransaction(body.transaction, {
                     skipPreflight: body.skipPreflight,
                 }),
                 3
             );
+
+            console.log("Signature", signature);
             res.status(200).json({ signature });
         } catch (error) {
             console.error(error);
