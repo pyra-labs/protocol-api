@@ -11,5 +11,7 @@ export class BuildTxRoute extends Route {
     protected initializeRoutes() {
         this.router.get("/spend-limit", this.controller.buildSpendLimitTx);
         this.router.get("/init-account", this.controller.initAccount);
+        this.router.get("/close-account", this.controller.closeAccount);
+        this.router.get("/collateral-repay", this.controller.collateralRepay);
     }
 }

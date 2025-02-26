@@ -6,6 +6,12 @@ import { DEFAULT_CARD_TIMEFRAME, DEFAULT_CARD_TIMEFRAME_LIMIT, DEFAULT_CARD_TIME
 import { buildTransaction } from '../../utils/helpers.js';
 import { connection, quartzClient } from '../../index.js';
 import { Controller } from '../../types/controller.class.js';
+import { buildCloseAccountTransaction } from './build-tx/closeAccount.js';
+import { buildCollateralRepayTransaction } from './build-tx/collateralRepay.js';
+import type { MarketIndex } from '@quartz-labs/sdk';
+import { SwapMode } from '@jup-ag/api';
+import config from '../../config/config.js';
+
 
 export class BuildTxController extends Controller {
     constructor() {
@@ -46,7 +52,7 @@ export class BuildTxController extends Controller {
             res.status(200).json({ transaction: serializedTx });
             return;
         } catch (error) {
-            this.getLogger().error(`Error building transaction: ${error}`);
+            this.getLogger().error(`Error building spend limit transaction: ${error}`);
             next(error);
         }
     }
@@ -81,4 +87,79 @@ export class BuildTxController extends Controller {
             next(error);
         }
     }
+
+
+    async closeAccount(req: Request, res: Response, next: NextFunction) {
+        try {
+            const address = new PublicKey(req.query.address as string);
+            if (!address) {
+                throw new HttpException(400, "Wallet address is required");
+            }
+
+            const serializedTx = await buildCloseAccountTransaction(
+                address,
+                connection,
+                quartzClient
+            );
+            
+            res.status(200).json({ transaction: serializedTx });
+            return;
+        } catch (error) {
+            this.getLogger().error(`Error building close account transaction: ${error}`);
+            next(error);
+        }
+    }
+
+    async collateralRepay(req: Request, res: Response, next: NextFunction) {
+        try {
+            const address = new PublicKey(req.query.address as string);
+            if (!address) {
+                throw new HttpException(400, "Wallet address is required");
+            }
+
+            const amountSwapBaseUnits = Number(req.query.amountSwapBaseUnits);
+            if (!amountSwapBaseUnits) {
+                throw new HttpException(400, "Amount swap base units is required");
+            }
+
+            const marketIndexLoan = Number(req.query.marketIndexLoan) as MarketIndex;
+            if (!marketIndexLoan) {
+                throw new HttpException(400, "Market index loan is required");
+            }
+
+            const marketIndexCollateral = Number(req.query.marketIndexCollateral) as MarketIndex;
+            if (!marketIndexCollateral) {
+                throw new HttpException(400, "Market index collateral is required");
+            }
+
+            const swapMode = req.query.swapMode as SwapMode;
+            if (!swapMode) {
+                throw new HttpException(400, "Swap mode is required");
+            }
+
+            const useMaxAmount = (req.query.useMaxAmount as string) === "true";
+            if (!useMaxAmount) {
+                throw new HttpException(400, "Use max amount is required");
+            }
+
+            const serializedTx = await buildCollateralRepayTransaction(
+                address,
+                amountSwapBaseUnits,
+                marketIndexLoan,
+                marketIndexCollateral,
+                swapMode,
+                useMaxAmount,
+                connection,
+                config.FLASH_LOAN_CALLER,
+                quartzClient
+            );
+            
+            res.status(200).json({ transaction: serializedTx });
+            return;
+        } catch (error) {
+            this.getLogger().error(`Error building collateral repay transaction: ${error}`);
+            next(error);
+        }
+    }
+
 }

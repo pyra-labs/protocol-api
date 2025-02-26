@@ -9,6 +9,6 @@ export class ConfirmTxRoute extends Route {
     }
 
     protected initializeRoutes() {
-        this.router.post("/", this.controller.confirmTx);
+        this.router.get("/", this.controller.confirmTx);
     }
 }

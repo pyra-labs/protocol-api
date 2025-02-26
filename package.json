@@ -16,11 +16,13 @@
   },
   "license": "ISC",
   "dependencies": {
+    "@mrgnlabs/marginfi-client-v2": "^5.0.0",
     "@quartz-labs/logger": "1.1.0",
     "@quartz-labs/sdk": "0.9.6",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.98.0",
     "body-parser": "^1.20.3",
+    "bs58": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
