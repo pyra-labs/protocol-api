@@ -6,6 +6,7 @@ import { getCardDetailsFromInternalApi } from './program-data/cardDetails.js';
 import { Controller } from '../../types/controller.class.js';
 import { checkHasVaultHistory, checkIsMissingBetaKey, checkIsVaultInitialized, checkRequiresUpgrade } from './program-data/accountStatus.js';
 import { getDepositLimits } from './program-data/depositLimit.js';
+import { getSpendLimits } from './program-data/spendLimits.js';
 
 export class ProgramDataController extends Controller {
     constructor() {
@@ -80,7 +81,7 @@ export class ProgramDataController extends Controller {
 
     public getDepositLimits = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const address = new PublicKey(req.body.address as string);
+            const address = new PublicKey(req.query.address as string);
             if (!address) {
                 throw new HttpException(400, "Wallet address is required");
             }
@@ -88,6 +89,23 @@ export class ProgramDataController extends Controller {
             const depositLimits = await getDepositLimits(address);
 
             res.status(200).json(depositLimits);
+            return;
+        } catch (error) {
+            this.getLogger().error(`Error confirming transaction: ${error}`);
+            next(error);
+        }
+    }
+
+    public getSpendLimits = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const address = new PublicKey(req.query.address as string);
+            if (!address) {
+                throw new HttpException(400, "Wallet address is required");
+            }
+
+            const spendLimits = await getSpendLimits(address);
+
+            res.status(200).json(spendLimits);
             return;
         } catch (error) {
             this.getLogger().error(`Error confirming transaction: ${error}`);
