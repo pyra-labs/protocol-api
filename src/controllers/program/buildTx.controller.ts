@@ -11,6 +11,7 @@ import { buildCollateralRepayTransaction } from './build-tx/collateralRepay.js';
 import type { MarketIndex } from '@quartz-labs/sdk';
 import { SwapMode } from '@jup-ag/api';
 import config from '../../config/config.js';
+import { buildDepositTransaction } from './build-tx/deposit.js';
 
 
 export class BuildTxController extends Controller {
@@ -18,7 +19,7 @@ export class BuildTxController extends Controller {
         super();
     }
 
-    public buildSpendLimitTx = async (req: Request, res: Response, next: NextFunction) => {
+    public adjustSpendLimit = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const address = new PublicKey(req.query.address as string);
             if (!address) {
@@ -158,6 +159,49 @@ export class BuildTxController extends Controller {
             return;
         } catch (error) {
             this.getLogger().error(`Error building collateral repay transaction: ${error}`);
+            next(error);
+        }
+    }
+
+    async deposit(req: Request, res: Response, next: NextFunction) {
+        try {
+            const address = new PublicKey(req.query.address as string);
+            if (!address) {
+                throw new HttpException(400, "Wallet address is required");
+            }
+
+            const amountBaseUnits = Number(req.query.amountBaseUnits);
+            if (!amountBaseUnits) {
+                throw new HttpException(400, "Amount base units is required");
+            }
+
+            const marketIndex = Number(req.query.marketIndex) as MarketIndex;
+            if (!marketIndex) {
+                throw new HttpException(400, "Market index is required");
+            }
+
+            const repayingLoan = (req.query.repayingLoan as string) === "true";
+            if (!repayingLoan) {
+                throw new HttpException(400, "Repaying loan is required");
+            }
+
+            const useMaxAmount = (req.query.useMaxAmount as string) === "true";
+            if (!useMaxAmount) {
+                throw new HttpException(400, "Use max amount is required");
+            }
+
+            const serializedTx = await buildDepositTransaction(
+                address,
+                amountBaseUnits,
+                marketIndex,
+                repayingLoan,
+                useMaxAmount
+            );
+            
+            res.status(200).json({ transaction: serializedTx });
+            return;
+        } catch (error) {
+            this.getLogger().error(`Error building deposit transaction: ${error}`);
             next(error);
         }
     }
