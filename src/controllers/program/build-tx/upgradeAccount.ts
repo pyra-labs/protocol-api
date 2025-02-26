@@ -9,7 +9,7 @@ import { DEFAULT_CARD_TRANSACTION_LIMIT, DEFAULT_CARD_TIMEFRAME, DEFAULT_CARD_TI
 
 export const buildUpgradeAccountTransaction = async (
     address: PublicKey,
-) => {
+): Promise<string> => {
     const client = quartzClient || await QuartzClient.fetchClient(connection);
 
     let user: QuartzUser;

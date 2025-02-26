@@ -12,6 +12,7 @@ import config from '../../config/config.js';
 import { buildDepositTransaction } from './build-tx/deposit.js';
 import { buildInitAccountTransaction } from './build-tx/initAccount.js';
 import { buildUpgradeAccountTransaction } from './build-tx/upgradeAccount.js';
+import { buildWithdrawTransaction } from './build-tx/withdraw.js';
 
 
 export class BuildTxController extends Controller {
@@ -53,7 +54,7 @@ export class BuildTxController extends Controller {
             res.status(200).json({ transaction: serializedTx });
             return;
         } catch (error) {
-            this.getLogger().error(`Error building spend limit transaction: ${error}`);
+            this.getLogger().error(`Error building adjust spend limit transaction: ${error}`);
             next(error);
         }
     }
@@ -71,7 +72,7 @@ export class BuildTxController extends Controller {
             return;
 
         } catch (error) {
-            console.error(error);
+            this.getLogger().error(`Error building init account transaction: ${error}`);
             next(error);
         }
     }
@@ -206,9 +207,51 @@ export class BuildTxController extends Controller {
             return;
 
         } catch (error) {
-            console.error(error);
+            this.getLogger().error(`Error building upgrade account transaction: ${error}`);
             next(error);
         }
     }
 
+    async withdraw(req: Request, res: Response, next: NextFunction) {
+        try {
+            const address = new PublicKey(req.query.address as string);
+            if (!address) {
+                throw new HttpException(400, "Wallet address is required");
+            }
+
+            const amountBaseUnits = Number(req.query.amountBaseUnits);
+            if (!amountBaseUnits) {
+                throw new HttpException(400, "Amount base units is required");
+            }
+
+            const marketIndex = Number(req.query.marketIndex) as MarketIndex;
+            if (!marketIndex) {
+                throw new HttpException(400, "Market index is required");
+            }
+
+            const allowLoan = (req.query.allowLoan as string) === "true";
+            if (!allowLoan) {
+                throw new HttpException(400, "Allow loan is required");
+            }
+
+            const useMaxAmount = (req.query.useMaxAmount as string) === "true";
+            if (!useMaxAmount) {
+                throw new HttpException(400, "Use max amount is required");
+            }
+
+            const serializedTx = await buildWithdrawTransaction(
+                address,
+                amountBaseUnits,
+                marketIndex,
+                allowLoan,
+                useMaxAmount
+            );
+            
+            res.status(200).json({ transaction: serializedTx });
+            return;
+        } catch (error) {
+            this.getLogger().error(`Error building withdraw transaction: ${error}`);
+            next(error);
+        }
+    }
 }

@@ -14,7 +14,7 @@ export const buildDepositTransaction = async (
     marketIndex: MarketIndex,
     repayingLoan: boolean,
     useMaxAmount: boolean
-) => {
+): Promise<string> => {
     const client = quartzClient || await QuartzClient.fetchClient(connection);
 
     let user: QuartzUser;
