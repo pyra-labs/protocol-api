@@ -38,7 +38,7 @@ export const buildDepositTransaction = async (
     return Buffer.from(transaction.serialize()).toString("base64");
 }
 
-async function makeDepositIxs(
+export const makeDepositIxs = async (
     connection: Connection,
     address: PublicKey,
     amountBaseUnits: number,
@@ -48,7 +48,7 @@ async function makeDepositIxs(
 ): Promise<{
     ixs: TransactionInstruction[],
     lookupTables: AddressLookupTableAccount[],
-}> {
+}> => {
     const mint = TOKENS[marketIndex].mint;
     const mintTokenProgram = await getTokenProgram(connection, mint);
     const walletAta = await getAssociatedTokenAddress(mint, address, false, mintTokenProgram);

@@ -2,6 +2,7 @@ import { getVaultPublicKey, retryWithBackoff } from '@quartz-labs/sdk';
 import { PublicKey } from '@solana/web3.js';
 import config from '../../../config/config.js';
 import { connection } from '../../../index.js';
+import { HttpException } from '../../../utils/errors.js';
 
 export const checkHasVaultHistory = async (wallet: PublicKey): Promise<boolean> => {
     const vaultPda = getVaultPublicKey(wallet);
@@ -32,7 +33,7 @@ export const checkIsMissingBetaKey = async (address: PublicKey): Promise<boolean
     });
     
     const body = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(body));
+    if (!response.ok) throw new HttpException(500, JSON.stringify(body));
 
     const typedBody = body as any;
     for (const asset of typedBody.result.items) {

@@ -5,6 +5,7 @@ import { AccountStatus } from '../../types/enums/AccountStatus.enum.js';
 import { getCardDetailsFromInternalApi } from './program-data/cardDetails.js';
 import { Controller } from '../../types/controller.class.js';
 import { checkHasVaultHistory, checkIsMissingBetaKey, checkIsVaultInitialized, checkRequiresUpgrade } from './program-data/accountStatus.js';
+import { getDepositLimits } from './program-data/depositLimit.js';
 
 export class ProgramDataController extends Controller {
     constructor() {
@@ -70,6 +71,23 @@ export class ProgramDataController extends Controller {
             const cardDetails = await getCardDetailsFromInternalApi(id, jwtToken);
 
             res.status(200).json(cardDetails);
+            return;
+        } catch (error) {
+            this.getLogger().error(`Error confirming transaction: ${error}`);
+            next(error);
+        }
+    }
+
+    public getDepositLimits = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const address = new PublicKey(req.body.address as string);
+            if (!address) {
+                throw new HttpException(400, "Wallet address is required");
+            }
+
+            const depositLimits = await getDepositLimits(address);
+
+            res.status(200).json(depositLimits);
             return;
         } catch (error) {
             this.getLogger().error(`Error confirming transaction: ${error}`);
