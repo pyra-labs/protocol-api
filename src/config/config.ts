@@ -40,7 +40,6 @@ const envSchema = z.object({
         }
     ),
     CARD_PEM: z.string(),
-    INTERNAL_API_URL: z.string().url(),
 });
 
 const config = envSchema.parse(process.env);
