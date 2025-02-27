@@ -4,12 +4,11 @@ import { AccountLayout } from '@solana/spl-token';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { getComputeUnitLimit, getComputeUnitPrice, getMarketIndicesRecord, getTokenProgram, MarketIndex, TOKENS } from '@quartz-labs/sdk';
 import { QuartzClient } from '@quartz-labs/sdk';
-import { connection } from '../../../index.js';
 import { MICRO_LAMPORTS_PER_LAMPORT } from '../../../config/constants.js';
 import { makeDepositIxs } from '../build-tx/deposit.js';
 
 
-export const getDepositLimits = async (address: PublicKey): Promise<Record<MarketIndex, number>> => {
+export const getDepositLimits = async (address: PublicKey, connection: Connection): Promise<Record<MarketIndex, number>> => {
 
     const limits = getMarketIndicesRecord<number>(0);
     for (const marketIndex of MarketIndex) {

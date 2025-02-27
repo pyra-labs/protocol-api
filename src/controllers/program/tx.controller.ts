@@ -1,10 +1,10 @@
 import type { NextFunction, Request, Response } from 'express';
-import { TransactionExpiredBlockheightExceededError, VersionedTransaction } from '@solana/web3.js';
+import { Connection, TransactionExpiredBlockheightExceededError, VersionedTransaction } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
-import { connection } from '../../index.js';
 import { Controller } from '../../types/controller.class.js';
 import { retryWithBackoff } from '@quartz-labs/sdk';
 import { z } from 'zod';
+import config from '../../config/config.js';
 
 const transactionSchema = z.object({
     transaction: z.string()
@@ -19,6 +19,12 @@ const transactionSchema = z.object({
 
 export class TxController extends Controller {
     private readonly MAX_DURATION = 70; // 70 second maximum in Vercel
+    private connection: Connection;
+
+    constructor() {
+        super();
+        this.connection = new Connection(config.RPC_URL);
+    }
 
     public confirmTx = async (req: Request, res: Response, next: NextFunction) => {
         try {
@@ -34,9 +40,9 @@ export class TxController extends Controller {
             let lastError: any = null;
             while (Date.now() - startTime < (maxDurationMs - CONFIRMATION_METHOD_DURATION)) {
                 try {
-                    const result = await connection.confirmTransaction({
+                    const result = await this.connection.confirmTransaction({
                         signature,
-                        ...(await connection.getLatestBlockhash())
+                        ...(await this.connection.getLatestBlockhash())
                     }, "confirmed");
                     const success = result.value.err === null;
 
@@ -78,7 +84,7 @@ export class TxController extends Controller {
 
         try {
             const signature = await retryWithBackoff(
-                async () => connection.sendRawTransaction(body.transaction, {
+                async () => this.connection.sendRawTransaction(body.transaction, {
                     skipPreflight: body.skipPreflight,
                 }),
                 3

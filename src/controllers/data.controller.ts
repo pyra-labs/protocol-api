@@ -4,16 +4,19 @@ import config from "../config/config.js";
 import { YIELD_CUT } from "../config/constants.js";
 import { bnToDecimal, getGoogleAccessToken, getTimestamp } from "../utils/helpers.js";
 import { WebflowClient } from "webflow-api";
-import { baseUnitToDecimal, MarketIndex, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
+import { baseUnitToDecimal, MarketIndex, QuartzClient, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
 import { PriceFetcherService } from "../services/priceFetcher.service.js";
-import { quartzClient } from "../index.js";
+import { Connection } from "@solana/web3.js";
 
 export class DataController extends Controller {
     private priceFetcher: PriceFetcherService;
+    private quartzClientPromise: Promise<QuartzClient>;
 
     constructor() {
         super();
+        const connection = new Connection(config.RPC_URL);
+        this.quartzClientPromise = QuartzClient.fetchClient(connection);
         this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
 
@@ -29,6 +32,7 @@ export class DataController extends Controller {
 
     public getUsers = async (_: Request, res: Response, next: NextFunction) => {
         try {
+            const quartzClient = await this.quartzClientPromise;
             const owners = await retryWithBackoff(
                 () => quartzClient.getAllQuartzAccountOwnerPubkeys()
             );
@@ -44,6 +48,7 @@ export class DataController extends Controller {
 
     public getTVL = async (_: Request, res: Response, next: NextFunction) => {
         try {
+            const quartzClient = await this.quartzClientPromise;
             const users = await retryWithBackoff(
                 async () => {
                     const owners = await quartzClient.getAllQuartzAccountOwnerPubkeys();
@@ -182,7 +187,8 @@ export class DataController extends Controller {
     }
 
     public updateWebsiteData = async (_: Request, res: Response, next: NextFunction) => {
-        try {   
+        try {
+            const quartzClient = await this.quartzClientPromise;
             const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });
 
             // Get USDC deposit rate

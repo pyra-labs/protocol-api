@@ -1,10 +1,9 @@
 import { getVaultPublicKey, retryWithBackoff } from '@quartz-labs/sdk';
-import { PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 import config from '../../../config/config.js';
-import { connection } from '../../../index.js';
 import { HttpException } from '../../../utils/errors.js';
 
-export const checkHasVaultHistory = async (wallet: PublicKey): Promise<boolean> => {
+export const checkHasVaultHistory = async (wallet: PublicKey, connection: Connection): Promise<boolean> => {
     const vaultPda = getVaultPublicKey(wallet);
     const signatures = await retryWithBackoff(
         async () => connection.getSignaturesForAddress(vaultPda),
@@ -14,7 +13,7 @@ export const checkHasVaultHistory = async (wallet: PublicKey): Promise<boolean> 
     return isSignatureHistory;
 }
 
-export const checkIsMissingBetaKey = async (address: PublicKey): Promise<boolean> => { 
+export const checkIsMissingBetaKey = async (address: PublicKey, connection: Connection): Promise<boolean> => { 
     if (!config.REQUIRE_BETA_KEY) return false;
 
     const response = await fetch(connection.rpcEndpoint, {
@@ -45,7 +44,7 @@ export const checkIsMissingBetaKey = async (address: PublicKey): Promise<boolean
     return true;
 }
 
-export const checkIsVaultInitialized = async (wallet: PublicKey): Promise<boolean> => {
+export const checkIsVaultInitialized = async (wallet: PublicKey, connection: Connection): Promise<boolean> => {
     const vaultPda = getVaultPublicKey(wallet);
     const vaultPdaAccount = await retryWithBackoff(
         async () => connection.getAccountInfo(vaultPda),
@@ -54,7 +53,7 @@ export const checkIsVaultInitialized = async (wallet: PublicKey): Promise<boolea
     return (vaultPdaAccount !== null);
 }
 
-export const checkRequiresUpgrade = async (wallet: PublicKey): Promise<boolean> => {
+export const checkRequiresUpgrade = async (wallet: PublicKey, connection: Connection): Promise<boolean> => {
     const vaultPda = getVaultPublicKey(wallet);
     const vaultPdaAccount = await retryWithBackoff(
         async () => connection.getAccountInfo(vaultPda),

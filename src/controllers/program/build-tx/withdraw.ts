@@ -1,7 +1,6 @@
 import { AddressLookupTableAccount, Connection, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { getTokenProgram, MarketIndex, TOKENS, makeCreateAtaIxIfNeeded, QuartzUser, QuartzClient } from '@quartz-labs/sdk';
 import { createCloseAccountInstruction, getAssociatedTokenAddress } from '@solana/spl-token';
-import { connection, quartzClient } from '../../../index.js';
 import { HttpException } from '../../../utils/errors.js';
 import { buildTransaction, getWsolMint } from '../../../utils/helpers.js';
 
@@ -10,13 +9,13 @@ export const buildWithdrawTransaction = async (
     amountBaseUnits: number,
     marketIndex: MarketIndex,
     allowLoan: boolean,
-    useMaxAmount: boolean
+    useMaxAmount: boolean,  
+    connection: Connection,
+    quartzClient: QuartzClient
 ): Promise<string> => {
-    const client = quartzClient || await QuartzClient.fetchClient(connection);
-
     let user: QuartzUser;
     try {
-        user = await client.getQuartzAccount(address);
+        user = await quartzClient.getQuartzAccount(address);
     } catch {
         throw new HttpException(400, "User not found");
     }

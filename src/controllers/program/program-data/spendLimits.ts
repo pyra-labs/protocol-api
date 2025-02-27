@@ -1,14 +1,11 @@
-import { PublicKey } from '@solana/web3.js';
-import { connection, quartzClient } from '../../../index.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 import { type QuartzUser, BN, QuartzClient } from "@quartz-labs/sdk";
 import { HttpException } from '../../../utils/errors.js';
 
-export const getSpendLimits = async (address: PublicKey) => {
-
-    const client = quartzClient || await QuartzClient.fetchClient(connection);
+export const getSpendLimits = async (address: PublicKey, connection: Connection, quartzClient: QuartzClient) => {
     let user: QuartzUser;
     try {
-        user = await client.getQuartzAccount(address);
+        user = await quartzClient.getQuartzAccount(address);
     } catch {
         throw new HttpException(400, "User not found");
     }

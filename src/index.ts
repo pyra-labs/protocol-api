@@ -6,9 +6,6 @@ import { QuartzClient } from "@quartz-labs/sdk";
 import config from "./config/config.js";
 import { Connection } from "@solana/web3.js";
 
-export const quartzClient = await QuartzClient.fetchClient(new Connection(config.RPC_URL));
-export const connection = new Connection(config.RPC_URL);
-
 const app = new App([
   new DataRoute(),
   new UserRoute(),

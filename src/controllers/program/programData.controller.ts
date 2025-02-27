@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
 import { AccountStatus } from '../../types/enums/AccountStatus.enum.js';
 import { getCardDetailsFromInternalApi } from './program-data/cardDetails.js';
@@ -7,10 +7,17 @@ import { Controller } from '../../types/controller.class.js';
 import { checkHasVaultHistory, checkIsMissingBetaKey, checkIsVaultInitialized, checkRequiresUpgrade } from './program-data/accountStatus.js';
 import { getDepositLimits } from './program-data/depositLimit.js';
 import { getSpendLimits } from './program-data/spendLimits.js';
+import config from '../../config/config.js';
+import { QuartzClient } from '@quartz-labs/sdk';
 
 export class ProgramDataController extends Controller {
+    private connection: Connection;
+    private quartzClientPromise: Promise<QuartzClient>;
+
     constructor() {
         super();
+        this.connection = new Connection(config.RPC_URL);
+        this.quartzClientPromise = QuartzClient.fetchClient(this.connection);
     }
 
     public getAccountStatus = async (req: Request, res: Response, next: NextFunction) => {
@@ -28,10 +35,10 @@ export class ProgramDataController extends Controller {
             }
 
             const [hasVaultHistory, isMissingBetaKey, isVaultInitialized, requiresUpgrade] = await Promise.all([
-                checkHasVaultHistory(pubkey),
-                checkIsMissingBetaKey(pubkey),
-                checkIsVaultInitialized(pubkey),
-                checkRequiresUpgrade(pubkey)
+                checkHasVaultHistory(pubkey, this.connection),
+                checkIsMissingBetaKey(pubkey, this.connection),
+                checkIsVaultInitialized(pubkey, this.connection),
+                checkRequiresUpgrade(pubkey, this.connection)
             ]);
             
             if (!isVaultInitialized && hasVaultHistory) {
@@ -86,7 +93,7 @@ export class ProgramDataController extends Controller {
                 throw new HttpException(400, "Wallet address is required");
             }
 
-            const depositLimits = await getDepositLimits(address);
+            const depositLimits = await getDepositLimits(address, this.connection);
 
             res.status(200).json(depositLimits);
             return;
@@ -103,7 +110,8 @@ export class ProgramDataController extends Controller {
                 throw new HttpException(400, "Wallet address is required");
             }
 
-            const spendLimits = await getSpendLimits(address);
+            const quartzClient = await this.quartzClientPromise;
+            const spendLimits = await getSpendLimits(address, this.connection, quartzClient);
 
             res.status(200).json(spendLimits);
             return;

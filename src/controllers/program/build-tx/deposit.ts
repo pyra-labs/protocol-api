@@ -1,5 +1,4 @@
 import { AddressLookupTableAccount, Connection, PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
-import { connection, quartzClient } from '../../../index.js';
 import { HttpException } from '../../../utils/errors.js';
 import { buildTransaction } from '../../../utils/helpers.js';
 import { createCloseAccountInstruction, createSyncNativeInstruction, getAssociatedTokenAddress } from "@solana/spl-token";
@@ -13,13 +12,13 @@ export const buildDepositTransaction = async (
     amountBaseUnits: number,
     marketIndex: MarketIndex,
     repayingLoan: boolean,
-    useMaxAmount: boolean
+    useMaxAmount: boolean,
+    connection: Connection,
+    quartzClient: QuartzClient
 ): Promise<string> => {
-    const client = quartzClient || await QuartzClient.fetchClient(connection);
-
     let user: QuartzUser;
     try {
-        user = await client.getQuartzAccount(address);
+        user = await quartzClient.getQuartzAccount(address);
     } catch {
         throw new HttpException(400, "User not found");
     }
