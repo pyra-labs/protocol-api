@@ -1,5 +1,5 @@
 import config from "../config/config.js";
-import { TOKENS } from "@quartz-labs/sdk";
+import { TOKENS, retryWithBackoff } from "@quartz-labs/sdk";
 import { VersionedTransaction } from "@solana/web3.js";
 import { ComputeBudgetProgram } from "@solana/web3.js";
 import { TransactionMessage } from "@solana/web3.js";
@@ -108,5 +108,29 @@ export async function getTokenAccountBalance(connection, tokenAccount) {
 export function baseUnitToDecimal(baseUnits, marketIndex) {
     const token = TOKENS[marketIndex];
     return baseUnits / (10 ** token.decimalPrecision.toNumber());
+}
+export async function fetchAndParse(url, req, retries = 0) {
+    const response = await retryWithBackoff(async () => fetch(url, req), retries);
+    if (!response.ok) {
+        let body;
+        try {
+            body = await response.json();
+        }
+        catch {
+            body = null;
+        }
+        const error = {
+            status: response.status,
+            body
+        };
+        throw new Error(JSON.stringify(error) ?? `Could not fetch ${url}`);
+    }
+    try {
+        const body = await response.json();
+        return body;
+    }
+    catch {
+        return response;
+    }
 }
 //# sourceMappingURL=helpers.js.map
