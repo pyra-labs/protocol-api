@@ -16,6 +16,8 @@
   },
   "license": "ISC",
   "dependencies": {
+    "@jup-ag/api": "^6.0.40",
+    "@mrgnlabs/marginfi-client-v2": "^5.0.0",
     "@quartz-labs/logger": "1.1.0",
     "@quartz-labs/sdk": "0.9.6",
     "@solana/spl-token": "^0.4.9",
