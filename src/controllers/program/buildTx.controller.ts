@@ -60,7 +60,6 @@ export class BuildTxController extends Controller {
             res.status(200).json({ transaction: serializedTx });
             return;
         } catch (error) {
-            this.getLogger().error(`Error building adjust spend limit transaction: ${error}`);
             next(error);
         }
     }
@@ -83,7 +82,6 @@ export class BuildTxController extends Controller {
             return;
 
         } catch (error) {
-            this.getLogger().error(`Error building init account transaction: ${error}`);
             next(error);
         }
     }
@@ -107,7 +105,6 @@ export class BuildTxController extends Controller {
             res.status(200).json({ transaction: serializedTx });
             return;
         } catch (error) {
-            this.getLogger().error(`Error building close account transaction: ${error}`);
             next(error);
         }
     }
@@ -161,7 +158,6 @@ export class BuildTxController extends Controller {
             res.status(200).json({ transaction: serializedTx });
             return;
         } catch (error) {
-            this.getLogger().error(`Error building collateral repay transaction: ${error}`);
             next(error);
         }
     }
@@ -207,7 +203,6 @@ export class BuildTxController extends Controller {
             res.status(200).json({ transaction: serializedTx });
             return;
         } catch (error) {
-            this.getLogger().error(`Error building deposit transaction: ${error}`);
             next(error);
         }
     }
@@ -230,7 +225,6 @@ export class BuildTxController extends Controller {
             return;
 
         } catch (error) {
-            this.getLogger().error(`Error building upgrade account transaction: ${error}`);
             next(error);
         }
     }
@@ -276,7 +270,6 @@ export class BuildTxController extends Controller {
             res.status(200).json({ transaction: serializedTx });
             return;
         } catch (error) {
-            this.getLogger().error(`Error building withdraw transaction: ${error}`);
             next(error);
         }
     }
