@@ -75,7 +75,6 @@ export class ProgramDataController extends Controller {
             res.status(200).json(depositLimits);
             return;
         } catch (error) {
-            this.getLogger().error(`Error confirming transaction: ${error}`);
             next(error);
         }
     }
@@ -93,7 +92,6 @@ export class ProgramDataController extends Controller {
             res.status(200).json(spendLimits);
             return;
         } catch (error) {
-            this.getLogger().error(`Error confirming transaction: ${error}`);
             next(error);
         }
     }
