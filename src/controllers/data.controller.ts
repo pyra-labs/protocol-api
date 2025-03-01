@@ -12,11 +12,12 @@ import { PriceFetcherService } from "../services/priceFetcher.service.js";
 export class DataController extends Controller {
     private quartzClientPromise: Promise<QuartzClient>;
     private priceFetcher: PriceFetcherService;
+    private connection: Connection;
 
     constructor() {
         super();
-        const connection = new Connection(config.RPC_URL);
-        this.quartzClientPromise = QuartzClient.fetchClient(connection);
+        this.connection = new Connection(config.RPC_URL);
+        this.quartzClientPromise = QuartzClient.fetchClient(this.connection);
         this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
 
@@ -31,7 +32,7 @@ export class DataController extends Controller {
     }
 
     public getUsers = async (_: Request, res: Response, next: NextFunction) => {
-        const quartzClient = await this.quartzClientPromise;
+        const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
 
         try {
             const owners = await retryWithBackoff(
@@ -48,7 +49,7 @@ export class DataController extends Controller {
     }
 
     public getTVL = async (_: Request, res: Response, next: NextFunction) => {
-        const quartzClient = await this.quartzClientPromise;
+        const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
 
         try {
             const users = await retryWithBackoff(
@@ -189,7 +190,7 @@ export class DataController extends Controller {
     }
 
     public updateWebsiteData = async (_: Request, res: Response, next: NextFunction) => {
-        const quartzClient = await this.quartzClientPromise;
+        const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
 
         try {   
             const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });

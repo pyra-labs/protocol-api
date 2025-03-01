@@ -86,7 +86,7 @@ export class ProgramDataController extends Controller {
                 throw new HttpException(400, "Wallet address is required");
             }
 
-            const quartzClient = await this.quartzClientPromise;
+            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
             const spendLimits = await getSpendLimits(address, this.connection, quartzClient);
 
             res.status(200).json(spendLimits);

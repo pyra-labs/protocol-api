@@ -10,14 +10,14 @@ import { PriceFetcherService } from "../services/priceFetcher.service.js";
 export class UserController extends Controller{
     private quartzClientPromise: Promise<QuartzClient>;
     private priceFetcher: PriceFetcherService;
-
+    private connection: Connection;
     private rateCache: Record<string, { depositRate: number; borrowRate: number; timestamp: number }> = {};
     private RATE_CACHE_DURATION = 60_000;
 
     constructor() {
         super();
-        const connection = new Connection(config.RPC_URL);
-        this.quartzClientPromise = QuartzClient.fetchClient(connection);
+        this.connection = new Connection(config.RPC_URL);
+        this.quartzClientPromise = QuartzClient.fetchClient(this.connection);
         this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
 
@@ -32,7 +32,7 @@ export class UserController extends Controller{
 
     private async getQuartzUser(pubkey: PublicKey): Promise<QuartzUser> {
         try {
-            const quartzClient = await this.quartzClientPromise;
+            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
             return await retryWithBackoff(
                 () => quartzClient.getQuartzAccount(pubkey),
                 2
@@ -62,7 +62,7 @@ export class UserController extends Controller{
 
     public getRate = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const quartzClient = await this.quartzClientPromise;
+            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
 
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
