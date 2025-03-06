@@ -1,3 +1,5 @@
+import { bs58 } from '@quartz-labs/sdk';
+import { Keypair } from '@solana/web3.js';
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
 dotenv.config();
@@ -27,6 +29,15 @@ const envSchema = z.object({
     GOOGLE_SPREADSHEET_ID: z.string(),
     WEBFLOW_ACCESS_TOKEN: z.string(),
     BREVO_API_KEY: z.string(),
+    REQUIRE_BETA_KEY: z.string().transform((str) => str === "true"),
+    FLASH_LOAN_CALLER: z.string().transform((value) => {
+        try {
+            return Keypair.fromSecretKey(bs58.decode(value));
+        }
+        catch {
+            throw new Error("FLASH_LOAN_CALLER must be a valid secret key");
+        }
+    }),
 });
 const config = envSchema.parse(process.env);
 export default config;
