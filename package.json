@@ -1,5 +1,5 @@
 {
-  "name": "server",
+  "name": "protocol-api",
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
@@ -12,12 +12,14 @@
     "test:buildTransaction": "vitest run --pool=forks src/test/buildTransaction.test.ts",
     "test:tx": "vitest run --pool=forks src/test/buildTransaction.test.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "yarn build && node dist/index.js"
+    "start": "yarn build && node dist/index.js",
+    "docker": "docker build --platform linux/amd64 -t protocol-api .",
+    "docker:run": "docker run --platform linux/amd64 --env-file ./.env protocol-api"
   },
   "license": "ISC",
   "dependencies": {
     "@quartz-labs/logger": "1.1.0",
-    "@quartz-labs/sdk": "0.9.5",
+    "@quartz-labs/sdk": "0.9.6",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.98.0",
     "body-parser": "^1.20.3",

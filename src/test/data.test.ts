@@ -13,7 +13,6 @@ describe("Test /data/price", () => {
         const body = await response.json();
 
         expect(response.status).toBe(200);
-        console.log(body);
         expect(body).toBeTypeOf("object");
         expect(Object.entries(body)).toSatisfy((values: [MarketIndex, number][]) => 
           values.every(([index, value]) => typeof value === "number" && Object.values(MarketIndex).includes(Number(index) as MarketIndex))
