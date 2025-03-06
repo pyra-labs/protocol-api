@@ -1,7 +1,6 @@
 # Git ignore file
 # - Ignore node_modules, .env, and other non-tracked files
 
-dist/
 build/
 node_modules/
 .env
