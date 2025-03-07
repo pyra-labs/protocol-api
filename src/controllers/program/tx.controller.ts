@@ -68,7 +68,6 @@ export class TxController extends Controller {
             res.status(500).json({ error: `Internal server error: ${lastError}` });
             return;
         } catch (error) {
-            this.getLogger().error(`Error confirming transaction: ${error}`);
             next(error);
         }
     }
