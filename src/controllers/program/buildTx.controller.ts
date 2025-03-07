@@ -162,7 +162,7 @@ export class BuildTxController extends Controller {
         }
     }
 
-    async deposit(req: Request, res: Response, next: NextFunction) {
+    deposit = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const address = new PublicKey(req.query.address as string);
             if (!address) {
@@ -179,8 +179,8 @@ export class BuildTxController extends Controller {
                 throw new HttpException(400, "Market index is required");
             }
 
-            const repayingLoan = (req.query.repayingLoan as string) === "true";
-            if (!repayingLoan) {
+            const repayingLoan = req.query.repayingLoan === "true";
+            if (repayingLoan === undefined || repayingLoan === null) {
                 throw new HttpException(400, "Repaying loan is required");
             }
 
@@ -189,7 +189,8 @@ export class BuildTxController extends Controller {
                 throw new HttpException(400, "Use max amount is required");
             }
 
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
+            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);
+
             const serializedTx = await buildDepositTransaction(
                 address,
                 amountBaseUnits,
@@ -229,7 +230,7 @@ export class BuildTxController extends Controller {
         }
     }
 
-    async withdraw(req: Request, res: Response, next: NextFunction) {
+    withdraw = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const address = new PublicKey(req.query.address as string);
             if (!address) {
@@ -246,13 +247,13 @@ export class BuildTxController extends Controller {
                 throw new HttpException(400, "Market index is required");
             }
 
-            const allowLoan = (req.query.allowLoan as string) === "true";
-            if (!allowLoan) {
+            const allowLoan = req.query.allowLoan === "true";
+            if (allowLoan === undefined || allowLoan === null) {
                 throw new HttpException(400, "Allow loan is required");
             }
 
-            const useMaxAmount = (req.query.useMaxAmount as string) === "true";
-            if (!useMaxAmount) {
+            const useMaxAmount = req.query.useMaxAmount === "true";
+            if (useMaxAmount === undefined || useMaxAmount === null) {
                 throw new HttpException(400, "Use max amount is required");
             }
 
