@@ -7,6 +7,7 @@ import { ErrorMiddleware, HttpException } from "./utils/errors.js";
 import type { Route } from "./types/route.class.js";
 import { AppLogger } from "@quartz-labs/logger";
 import type { CompositeRoute } from "./routes/compositeRoute.js";
+import type { Request, Response } from "express";
 
 export class App extends AppLogger {
     public app: express.Application;
@@ -33,7 +34,15 @@ export class App extends AppLogger {
         this.app.use(cors({ origin: "*" }));
         this.app.use(hpp());
         this.app.use(helmet());
-        this.app.use(express.json());
+        this.app.use(express.json({
+            verify: (_req: Request, _res: Response, buf: Buffer, _encoding: string) => {
+                try {
+                    JSON.parse(buf.toString());
+                } catch {
+                    throw new HttpException(400, "Invalid JSON in request body");
+                }
+            }
+        }));
     }
 
     private configureRoutes() {
