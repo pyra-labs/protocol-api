@@ -17,7 +17,7 @@ export class App extends AppLogger {
 
     constructor(routes: (Route | CompositeRoute)[]) {
         super({
-            name: "API App"
+            name: "Protocol API"
         });
         this.port = config.PORT;
         this.routes = routes;
