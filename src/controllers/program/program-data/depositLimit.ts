@@ -1,5 +1,4 @@
-import { Connection } from '@solana/web3.js';
-import { PublicKey } from '@solana/web3.js';
+import type { Connection, PublicKey } from '@solana/web3.js';
 import { AccountLayout } from '@solana/spl-token';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { getComputeUnitLimit, getComputeUnitPrice, getMarketIndicesRecord, getTokenProgram, MarketIndex, TOKENS } from '@quartz-labs/sdk';
@@ -21,7 +20,7 @@ export const getDepositLimits = async (address: PublicKey, connection: Connectio
 async function fetchDepositLimit(connection: Connection, pubkey: PublicKey, marketIndex: MarketIndex): Promise<number> {
     const [marketIndexSolString] = Object.entries(TOKENS).find(([, token]) => token.name === "SOL") ?? [];
     const marketIndexSol = Number(marketIndexSolString);
-    if (isNaN(marketIndexSol)) {
+    if (Number.isNaN(marketIndexSol)) {
         throw new Error("SOL market index not found");
     }
 

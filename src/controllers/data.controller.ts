@@ -3,16 +3,21 @@ import { HttpException } from "../utils/errors.js";
 import { Connection } from "@solana/web3.js";
 import config from "../config/config.js";
 import { YIELD_CUT } from "../config/constants.js";
-import { bnToDecimal, getGoogleAccessToken, getTimestamp } from "../utils/helpers.js";
+import { bnToDecimal, getGoogleAccessToken, getTimestamp, validateParams } from "../utils/helpers.js";
 import { WebflowClient } from "webflow-api";
-import { baseUnitToDecimal, MarketIndex, QuartzClient, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
+import { baseUnitToDecimal, type BN, MarketIndex, QuartzClient, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
 import { PriceFetcherService } from "../services/priceFetcher.service.js";
+import { z } from "zod";
 
 export class DataController extends Controller {
     private quartzClientPromise: Promise<QuartzClient>;
-    private priceFetcher: PriceFetcherService;
     private connection: Connection;
+
+    private priceFetcher: PriceFetcherService;
+
+    private rateCache: Record<string, { depositRate: number; borrowRate: number; timestamp: number }> = {};
+    private RATE_CACHE_DURATION = 60_000;
 
     constructor() {
         super();
@@ -21,11 +26,78 @@ export class DataController extends Controller {
         this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
 
-    public getPrice = async (_: Request, res: Response, next: NextFunction) => {        
+    public getPrices = async (_: Request, res: Response, next: NextFunction) => {        
         try {
             const prices = await this.priceFetcher.getPrices();
 
             res.status(200).json(prices);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    public getRate = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const paramsSchema = z.object({
+                marketIndices: z.array(
+                    z.coerce.number().int({
+                        message: "Market indices must be integers"
+                    }).refine((index) => [...MarketIndex].includes(index as MarketIndex), {
+                        message: "Invalid market index"
+                    })
+                )
+            });
+
+            const { marketIndices } = await validateParams(paramsSchema, req);
+
+            const now = Date.now();
+            const uncachedMarketIndices = marketIndices.filter(index => {
+                const cached = this.rateCache[index];
+                return !cached || (now - cached.timestamp) > this.RATE_CACHE_DURATION;
+            });
+
+            if (uncachedMarketIndices.length > 0) {
+                const quartzClient = await this.quartzClientPromise;    
+                const promises = uncachedMarketIndices.map(async (index) => {
+                    let depositRateBN: BN;
+                    let borrowRateBN: BN;
+                    try {
+                        depositRateBN = await retryWithBackoff(
+                            () => quartzClient.getDepositRate(index),
+                            3
+                        );
+                        borrowRateBN = await retryWithBackoff(
+                            () => quartzClient.getBorrowRate(index),
+                            3
+                        );
+                    } catch {
+                        throw new HttpException(400, `Could not find rates for spot market index ${index}`);
+                    }
+                
+                    // Update cache
+                    this.rateCache[index] = {
+                        depositRate: bnToDecimal(depositRateBN, 6),
+                        borrowRate: bnToDecimal(borrowRateBN, 6),
+                        timestamp: now
+                    };
+                });
+    
+                await Promise.all(promises);
+            }
+
+            const rates = marketIndices.reduce((acc, index) =>
+                Object.assign(acc, {
+                    [index]: {
+                        depositRate: this.rateCache[index]?.depositRate,
+                        borrowRate: this.rateCache[index]?.borrowRate
+                    }
+                }
+            ), {} as Record<
+                MarketIndex, 
+                { depositRate: number | undefined; borrowRate: number | undefined }>
+            );
+
+            res.status(200).json(rates);
         } catch (error) {
             next(error);
         }

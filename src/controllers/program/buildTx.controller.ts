@@ -4,7 +4,7 @@ import { HttpException } from '../../utils/errors.js';
 import { buildAdjustSpendLimitTransaction } from './build-tx/adjustSpendLimit.js';
 import { Controller } from '../../types/controller.class.js';
 import { QuartzClient, type MarketIndex } from '@quartz-labs/sdk';
-import { SwapMode } from '@jup-ag/api';
+import type { SwapMode } from '@jup-ag/api';
 import config from '../../config/config.js';
 import { buildDepositTransaction } from './build-tx/deposit.js';
 import { buildInitAccountTransaction } from './build-tx/initAccount.js';
@@ -43,7 +43,7 @@ export class BuildTxController extends Controller {
                 throw new HttpException(400, "Spend limit timeframe base units is required");
             }
 
-            let spendLimitTimeframe = Number(req.query.spendLimitTimeframe);
+            const spendLimitTimeframe = Number(req.query.spendLimitTimeframe);
             if (!spendLimitTimeframe) {
                 throw new HttpException(400, "Spend limit timeframe is required");
             }
@@ -164,10 +164,10 @@ export class BuildTxController extends Controller {
 
     deposit = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const address = new PublicKey(req.query.address as string);
-            if (!address) {
+            if (req.query.address === undefined || req.query.address === null) {
                 throw new HttpException(400, "Wallet address is required");
             }
+            const address = new PublicKey(req.query.address as string);
 
             const amountBaseUnits = Number(req.query.amountBaseUnits);
             if (!amountBaseUnits) {
@@ -179,15 +179,15 @@ export class BuildTxController extends Controller {
                 throw new HttpException(400, "Market index is required");
             }
 
-            const repayingLoan = req.query.repayingLoan === "true";
-            if (repayingLoan === undefined || repayingLoan === null) {
+            if (req.query.repayingLoan === undefined || req.query.repayingLoan === null) {
                 throw new HttpException(400, "Repaying loan is required");
             }
+            const repayingLoan = (req.query.repayingLoan as string) === "true";
 
-            const useMaxAmount = (req.query.useMaxAmount as string) === "true";
-            if (!useMaxAmount) {
+            if (req.query.useMaxAmount === undefined || req.query.useMaxAmount === null) {
                 throw new HttpException(400, "Use max amount is required");
             }
+            const useMaxAmount = (req.query.useMaxAmount as string) === "true";
 
             const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);
 

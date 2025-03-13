@@ -9,7 +9,8 @@ export class DataRoute extends Route {
     }
 
     protected initializeRoutes() {
-        this.router.get("/price", this.controller.getPrice);
+        this.router.get("/prices", this.controller.getPrices);
+        this.router.get("/rate", this.controller.getRate);
         this.router.get("/users", this.controller.getUsers);
         this.router.get("/tvl", this.controller.getTVL);
         this.router.post("/waitlist", this.controller.addWaitlist);

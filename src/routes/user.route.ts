@@ -9,11 +9,15 @@ export class UserRoute extends Route {
     }
 
     protected initializeRoutes() {
-        this.router.get("/rate", this.controller.getRate);
+        this.router.get("/account-status", this.controller.getAccountStatus);
+        
         this.router.get("/balance", this.controller.getBalance);
+        this.router.get("/spendable-balance", this.controller.getSpendableBalance);
+        this.router.get("/health", this.controller.getHealth);
+
         this.router.get("/withdraw-limit", this.controller.getWithdrawLimit);
         this.router.get("/borrow-limit", this.controller.getBorrowLimit);
-        this.router.get("/health", this.controller.getHealth);
-        this.router.get("/spendable-balance", this.controller.getSpendableBalance);
+        this.router.get("/deposit-limit", this.controller.getDepositLimits);
+        this.router.get("/spend-limit", this.controller.getSpendLimits);
     }
 }

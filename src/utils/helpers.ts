@@ -8,6 +8,24 @@ import type { AddressLookupTableAccount } from "@solana/web3.js";
 import { ComputeBudgetProgram } from "@solana/web3.js";
 import { TransactionMessage } from "@solana/web3.js";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+import { HttpException } from "./errors.js";
+import { z } from "zod";
+import type { Request } from "express";
+
+export async function validateParams<T extends z.ZodSchema>(
+    schema: T, 
+    req: Request
+): Promise<z.infer<T>> {
+    try {
+        const params = req.method === "GET" ? req.query : req.body;
+        return await schema.parseAsync(params);
+    } catch (error) {
+        if (error instanceof z.ZodError && error.errors[0]) {
+            throw new HttpException(400, error.errors[0].message);
+        }
+        throw new HttpException(500, "Could not validate request parameters");
+    }
+}
 
 export function bnToDecimal(bn: BN, decimalPlaces: number): number {
     const decimalFactor = 10 ** decimalPlaces;
@@ -163,14 +181,18 @@ export function baseUnitToDecimal(baseUnits: number, marketIndex: MarketIndex): 
     return baseUnits / (10 ** token.decimalPrecision.toNumber());
 }
 
-export async function fetchAndParse(url: string, req?: RequestInit | undefined, retries: number = 0): Promise<any> {
+export async function fetchAndParse<T>(
+    url: string, 
+    req?: RequestInit | undefined, 
+    retries = 0
+): Promise<T> {
     const response = await retryWithBackoff(
         async () => fetch(url, req),
         retries
     );
     
     if (!response.ok) {
-        let body;
+        let body: any;
         try {
             body = await response.json();
         } catch {
@@ -185,8 +207,8 @@ export async function fetchAndParse(url: string, req?: RequestInit | undefined, 
 
     try {
         const body = await response.json();
-        return body;
+        return body as T;
     } catch {
-        return response;
+        return response as T;
     }
 }
