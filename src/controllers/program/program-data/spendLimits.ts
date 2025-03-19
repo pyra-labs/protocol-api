@@ -1,5 +1,5 @@
-import { Connection, PublicKey } from '@solana/web3.js';
-import { type QuartzUser, BN, QuartzClient } from "@quartz-labs/sdk";
+import type { Connection, PublicKey } from '@solana/web3.js';
+import { type QuartzUser, BN, type QuartzClient } from "@quartz-labs/sdk";
 import { HttpException } from '../../../utils/errors.js';
 
 export const getSpendLimits = async (address: PublicKey, connection: Connection, quartzClient: QuartzClient) => {
