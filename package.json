@@ -21,7 +21,7 @@
     "@jup-ag/api": "^6.0.40",
     "@mrgnlabs/marginfi-client-v2": "^5.0.0",
     "@quartz-labs/logger": "1.1.0",
-    "@quartz-labs/sdk": "0.12.8",
+    "@quartz-labs/sdk": "0.12.9",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.98.0",
     "body-parser": "^1.20.3",
