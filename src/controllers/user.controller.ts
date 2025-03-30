@@ -193,7 +193,41 @@ export class UserController extends Controller{
             const user = await this.getQuartzUser(address);
             const spendableBalance = await user.getSpendableBalanceUsdcBaseUnits();
 
+            const quartzClient = await this.quartzClientPromise;
+            const openWithdrawOrders = await quartzClient.getOpenWithdrawOrders(address);
+
+            for (const order of openWithdrawOrders) {
+                // TODO: Calculate the amount of spendable balance after the withdraw order is filled
+            }
+
             res.status(200).json(spendableBalance);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    public getOpenOrders = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const address = this.validateAddress(req.query.address as string);
+            try {
+                await this.getQuartzUser(address);
+            } catch {
+                throw new HttpException(400, "Quartz account not found");
+            }
+            
+            const quartzClient = await this.quartzClientPromise;
+            const [
+                withdrawOrders,
+                spendLimitOrders
+            ] = await Promise.all([
+                quartzClient.getOpenWithdrawOrders(address),
+                quartzClient.getOpenSpendLimitsOrders(address)
+            ]);
+
+            res.status(200).json({
+                withdrawOrders,
+                spendLimitOrders
+            });
         } catch (error) {
             next(error);
         }
