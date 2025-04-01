@@ -51,6 +51,7 @@ export class TxController extends Controller {
                         success: success,
                         timeout: false,
                     });
+                    return;
                 } catch (error) {
                     lastError = error;
                 }
@@ -62,6 +63,7 @@ export class TxController extends Controller {
                     success: false,
                     timeout: true
                 });
+                return;
             }
 
             console.error(lastError);
