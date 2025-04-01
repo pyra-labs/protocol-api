@@ -77,7 +77,7 @@ export class TxController extends Controller {
         let body: z.infer<typeof transactionSchema>;
         try {
             body = transactionSchema.parse(req.body);
-        } catch (error) {
+        } catch {
             throw new HttpException(400, "Invalid transaction");
         }
 

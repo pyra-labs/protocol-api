@@ -5,7 +5,7 @@ import config from "../config/config.js";
 import { YIELD_CUT } from "../config/constants.js";
 import { bnToDecimal, getGoogleAccessToken, getTimestamp } from "../utils/helpers.js";
 import { WebflowClient } from "webflow-api";
-import { baseUnitToDecimal, MarketIndex, QuartzClient, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
+import { baseUnitToDecimal, MARKET_INDEX_USDC, MarketIndex, QuartzClient, retryWithBackoff } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
 import { PriceFetcherService } from "../services/priceFetcher.service.js";
 
@@ -195,11 +195,7 @@ export class DataController extends Controller {
         try {   
             const webflowClient = new WebflowClient({ accessToken: config.WEBFLOW_ACCESS_TOKEN });
 
-            // Get USDC deposit rate
-            const usdcMarketIndex = Object.entries(TOKENS).find(([_, token]) => token.name === "USDC")?.[0];
-            if (!usdcMarketIndex) throw new Error("USDC market index not found");
-            
-            const usdcDepositRateBN = await quartzClient.getDepositRate(Number(usdcMarketIndex));
+            const usdcDepositRateBN = await quartzClient.getDepositRate(MARKET_INDEX_USDC);
             const usdcDepositRate = bnToDecimal(usdcDepositRateBN, 6);
             if (usdcDepositRate <= 0) throw new Error("Invalid rate fetched");
 
