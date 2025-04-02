@@ -5,11 +5,9 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
-import { PriceFetcherService } from "../services/priceFetcher.service.js";
 
 export class UserController extends Controller{
     private quartzClientPromise: Promise<QuartzClient>;
-    private priceFetcher: PriceFetcherService;
     private connection: Connection;
     private rateCache: Record<string, { depositRate: number; borrowRate: number; timestamp: number }> = {};
     private RATE_CACHE_DURATION = 60_000;
@@ -18,7 +16,6 @@ export class UserController extends Controller{
         super();
         this.connection = new Connection(config.RPC_URL);
         this.quartzClientPromise = QuartzClient.fetchClient(this.connection);
-        this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
 
     private validateAddress(address: string): PublicKey {
@@ -129,12 +126,11 @@ export class UserController extends Controller{
                 3
             );
 
-            const balances = Object.entries(balancesBN).reduce((acc, [index, balance]) =>
-                Object.assign(acc, {
+            const balances = Object.entries(balancesBN).reduce((acc, [index, balance]) => {     
+                return Object.assign(acc, {
                     [index]: balance.toNumber()
-                }),
-                {} as Record<MarketIndex, number>
-            );
+                });
+            }, {} as Record<MarketIndex, number>);
 
             res.status(200).json(balances);
         } catch (error) {
@@ -191,16 +187,10 @@ export class UserController extends Controller{
         try {
             const address = this.validateAddress(req.query.address as string);
             const user = await this.getQuartzUser(address);
-            const spendableBalance = await user.getSpendableBalanceUsdcBaseUnits();
+            const getAvailableCreditUsdcBaseUnits = await user
+                .getAvailableCreditUsdcBaseUnits();
 
-            const quartzClient = await this.quartzClientPromise;
-            const openWithdrawOrders = await quartzClient.getOpenWithdrawOrders(address);
-
-            for (const order of openWithdrawOrders) {
-                // TODO: Calculate the amount of spendable balance after the withdraw order is filled
-            }
-
-            res.status(200).json(spendableBalance);
+            res.status(200).json(getAvailableCreditUsdcBaseUnits);
         } catch (error) {
             next(error);
         }

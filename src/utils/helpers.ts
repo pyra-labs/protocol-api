@@ -1,5 +1,5 @@
 import config from "../config/config.js";
-import { type MarketIndex, TOKENS, type BN, retryWithBackoff } from "@quartz-labs/sdk";
+import { TOKENS, type BN, type MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
 import { VersionedTransaction } from "@solana/web3.js";
 import type { Connection } from "@solana/web3.js";
 import type { TransactionInstruction } from "@solana/web3.js";
@@ -163,14 +163,18 @@ export function baseUnitToDecimal(baseUnits: number, marketIndex: MarketIndex): 
     return baseUnits / (10 ** token.decimalPrecision.toNumber());
 }
 
-export async function fetchAndParse(url: string, req?: RequestInit | undefined, retries: number = 0): Promise<any> {
+export async function fetchAndParse(
+    url: string, 
+    req?: RequestInit, 
+    retries = 0
+): Promise<any> {
     const response = await retryWithBackoff(
         async () => fetch(url, req),
         retries
     );
     
     if (!response.ok) {
-        let body;
+        let body: any;
         try {
             body = await response.json();
         } catch {

@@ -51,6 +51,7 @@ export class TxController extends Controller {
                         success: success,
                         timeout: false,
                     });
+                    return;
                 } catch (error) {
                     lastError = error;
                 }
@@ -62,6 +63,7 @@ export class TxController extends Controller {
                     success: false,
                     timeout: true
                 });
+                return;
             }
 
             console.error(lastError);
@@ -77,7 +79,7 @@ export class TxController extends Controller {
         let body: z.infer<typeof transactionSchema>;
         try {
             body = transactionSchema.parse(req.body);
-        } catch (error) {
+        } catch {
             throw new HttpException(400, "Invalid transaction");
         }
 
