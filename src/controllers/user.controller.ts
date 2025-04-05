@@ -5,6 +5,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
+import type { SpendLimitsOrderAccountResponse, WithdrawOrderAccountResponse } from "../types/orders.interface.js";
 
 export class UserController extends Controller{
     private quartzClientPromise: Promise<QuartzClient>;
@@ -214,9 +215,40 @@ export class UserController extends Controller{
                 quartzClient.getOpenSpendLimitsOrders(address)
             ]);
 
+            // Convert BNs to numbers
+
+            const withdrawOrdersNumber = withdrawOrders.map(order => ({
+                publicKey: order.publicKey,
+                account: {
+                    timeLock: {
+                        owner: order.account.timeLock.owner,
+                        isOwnerPayer: order.account.timeLock.isOwnerPayer,
+                        releaseSlot: order.account.timeLock.releaseSlot.toNumber()
+                    },
+                    amountBaseUnits: order.account.amountBaseUnits.toNumber(),
+                    driftMarketIndex: order.account.driftMarketIndex.toNumber(),
+                    reduceOnly: order.account.reduceOnly
+                }
+            })) as WithdrawOrderAccountResponse[];
+
+            const spendLimitOrdersNumber = spendLimitOrders.map(order => ({
+                publicKey: order.publicKey,
+                account: {
+                    timeLock: {
+                        owner: order.account.timeLock.owner,
+                        isOwnerPayer: order.account.timeLock.isOwnerPayer,
+                        releaseSlot: order.account.timeLock.releaseSlot.toNumber()
+                    },
+                    spendLimitPerTransaction: order.account.spendLimitPerTransaction.toNumber(),
+                    spendLimitPerTimeframe: order.account.spendLimitPerTimeframe.toNumber(),
+                    timeframeInSeconds: order.account.timeframeInSeconds.toNumber(),
+                    nextTimeframeResetTimestamp: order.account.nextTimeframeResetTimestamp.toNumber()
+                }
+            })) as SpendLimitsOrderAccountResponse[];
+
             res.status(200).json({
-                withdrawOrders,
-                spendLimitOrders
+                withdrawOrders: withdrawOrdersNumber,
+                spendLimitOrders: spendLimitOrdersNumber
             });
         } catch (error) {
             next(error);
