@@ -218,10 +218,10 @@ export class UserController extends Controller{
             // Convert BNs to numbers
 
             const withdrawOrdersNumber = withdrawOrders.map(order => ({
-                publicKey: order.publicKey,
+                publicKey: order.publicKey.toBase58(),
                 account: {
                     timeLock: {
-                        owner: order.account.timeLock.owner,
+                        owner: order.account.timeLock.owner.toBase58(),
                         isOwnerPayer: order.account.timeLock.isOwnerPayer,
                         releaseSlot: order.account.timeLock.releaseSlot.toNumber()
                     },
@@ -232,10 +232,10 @@ export class UserController extends Controller{
             })) as WithdrawOrderAccountResponse[];
 
             const spendLimitOrdersNumber = spendLimitOrders.map(order => ({
-                publicKey: order.publicKey,
+                publicKey: order.publicKey.toBase58(),
                 account: {
                     timeLock: {
-                        owner: order.account.timeLock.owner,
+                        owner: order.account.timeLock.owner.toBase58(),
                         isOwnerPayer: order.account.timeLock.isOwnerPayer,
                         releaseSlot: order.account.timeLock.releaseSlot.toNumber()
                     },

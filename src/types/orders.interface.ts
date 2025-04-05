@@ -1,7 +1,5 @@
-import type { PublicKey } from "@solana/web3.js";
-
 export interface TimeLockResponse {
-    owner: PublicKey;
+    owner: string;
     isOwnerPayer: boolean;
     releaseSlot: number;
 }
@@ -14,7 +12,7 @@ export interface WithdrawOrderResponse {
 }
 
 export interface WithdrawOrderAccountResponse {
-    publicKey: PublicKey;
+    publicKey: string;
     account: WithdrawOrderResponse;
 }
 
@@ -27,6 +25,6 @@ export interface SpendLimitsOrderResponse {
 }
 
 export interface SpendLimitsOrderAccountResponse {
-    publicKey: PublicKey;
+    publicKey: string;
     account: SpendLimitsOrderResponse;
 }
