@@ -216,7 +216,6 @@ export class UserController extends Controller{
             ]);
 
             // Convert BNs to numbers
-
             const withdrawOrdersNumber = withdrawOrders.map(order => ({
                 publicKey: order.publicKey.toBase58(),
                 account: {

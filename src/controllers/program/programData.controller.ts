@@ -5,7 +5,7 @@ import { AccountStatus } from '../../types/enums/AccountStatus.enum.js';
 import { Controller } from '../../types/controller.class.js';
 import config from '../../config/config.js';
 import { QuartzClient } from '@quartz-labs/sdk';
-import { checkHasVaultHistory, checkIsMissingBetaKey, checkIsVaultInitialized, checkRequiresUpgrade } from './program-data/accountStatus.js';
+import { checkHasVaultHistory, checkIsVaultInitialized, checkRequiresUpgrade } from './program-data/accountStatus.js';
 import { getDepositLimits } from './program-data/depositLimit.js';
 import { getSpendLimits } from './program-data/spendLimits.js';
 
@@ -26,16 +26,15 @@ export class ProgramDataController extends Controller {
                 throw new HttpException(400, "Wallet address is required");
             }
 
-            let pubkey;
+            let pubkey: PublicKey;
             try {
                 pubkey = new PublicKey(address);
             } catch {
                 throw new HttpException(400, "Invalid wallet address");
             }
 
-            const [hasVaultHistory, isMissingBetaKey, isVaultInitialized, requiresUpgrade] = await Promise.all([
+            const [hasVaultHistory, isVaultInitialized, requiresUpgrade] = await Promise.all([
                 checkHasVaultHistory(pubkey, this.connection),
-                checkIsMissingBetaKey(pubkey, this.connection),
                 checkIsVaultInitialized(pubkey, this.connection),
                 checkRequiresUpgrade(pubkey, this.connection)
             ]);
@@ -43,21 +42,19 @@ export class ProgramDataController extends Controller {
             if (!isVaultInitialized && hasVaultHistory) {
                 res.status(200).json({ status: AccountStatus.CLOSED });
                 return;
-            } else if (isMissingBetaKey) {
-                res.status(200).json({ status: AccountStatus.NO_BETA_KEY });
-                return;
-            } else if (isVaultInitialized) {
+            } 
+            
+            if (isVaultInitialized) {
                 if (requiresUpgrade) {
                     res.status(200).json({ status: AccountStatus.UPGRADE_REQUIRED });
                     return;
-                } else {
-                    res.status(200).json({ status: AccountStatus.INITIALIZED });
-                    return;
                 }
-            } else {
-                res.status(200).json({ status: AccountStatus.NOT_INITIALIZED });
+                
+                res.status(200).json({ status: AccountStatus.INITIALIZED });
                 return;
-            }
+            } 
+
+            res.status(200).json({ status: AccountStatus.NOT_INITIALIZED });
         } catch (error) {
             next(error);
         }
