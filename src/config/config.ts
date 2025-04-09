@@ -29,7 +29,6 @@ const envSchema = z.object({
     GOOGLE_SPREADSHEET_ID: z.string(),
     WEBFLOW_ACCESS_TOKEN: z.string(),
     BREVO_API_KEY: z.string(), 
-    REQUIRE_BETA_KEY: z.string().transform((str) => str === "true"),
     FLASH_LOAN_CALLER: z.string().transform(
         (value) => {
             try {
