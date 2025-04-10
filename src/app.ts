@@ -16,7 +16,10 @@ export class App extends AppLogger {
     
     private routes: (Route | CompositeRoute)[];
 
-    constructor(routes: (Route | CompositeRoute)[]) {
+    constructor(
+        routes: (Route | CompositeRoute)[],
+        prefix?: string
+    ) {
         super({
             name: "Protocol API"
         });
@@ -26,7 +29,7 @@ export class App extends AppLogger {
         this.app = express();
         
         this.configureMiddleware();
-        this.configureRoutes();
+        this.configureRoutes(prefix);
         this.configureErrorHandling();
     }
 
@@ -45,14 +48,20 @@ export class App extends AppLogger {
         }));
     }
 
-    private configureRoutes() {
-        this.app.get("/", (_, res) => {
+    private configureRoutes(prefix = "/") {
+        const standardizedPrefix = prefix === "/"
+            ? prefix
+            : `/${prefix.replace(/^\/+|\/+$/g, '')}/`;
+
+        this.app.get(standardizedPrefix, (_, res) => {
             res.status(200).send({result: "ok"});
         })
 
         for (const route of this.routes) {
             route.initLogger(this.logger, this.sendEmail);
-            this.app.use(route.path, route.router);
+            
+            const routePath = route.path.replace(/^\/+/, '');
+            this.app.use(`${standardizedPrefix}${routePath}`, route.router);
         }
 
         this.app.all("*", () => {

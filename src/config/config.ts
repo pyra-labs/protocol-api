@@ -38,6 +38,7 @@ const envSchema = z.object({
             }
         }
     ),
+    ROUTE_PREFIX: z.string().optional(),
 });
 
 const config = envSchema.parse(process.env);
