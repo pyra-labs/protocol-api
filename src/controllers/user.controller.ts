@@ -226,7 +226,8 @@ export class UserController extends Controller{
                     },
                     amountBaseUnits: order.account.amountBaseUnits.toNumber(),
                     driftMarketIndex: order.account.driftMarketIndex.toNumber(),
-                    reduceOnly: order.account.reduceOnly
+                    reduceOnly: order.account.reduceOnly,
+                    destination: order.account.destination.toBase58()
                 }
             })) as WithdrawOrderAccountResponse[];
 

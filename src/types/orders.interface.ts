@@ -9,6 +9,7 @@ export interface WithdrawOrderResponse {
     amountBaseUnits: number;
     driftMarketIndex: number;
     reduceOnly: boolean;
+    destination: string;
 }
 
 export interface WithdrawOrderAccountResponse {
