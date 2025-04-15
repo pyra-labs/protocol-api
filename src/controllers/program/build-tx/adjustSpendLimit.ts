@@ -1,5 +1,5 @@
-import { Connection, PublicKey } from '@solana/web3.js';
-import { BN, QuartzClient, QuartzUser } from '@quartz-labs/sdk';
+import type { Connection, PublicKey } from '@solana/web3.js';
+import { BN, type QuartzClient, type QuartzUser } from '@quartz-labs/sdk';
 import { buildTransaction } from '../../../utils/helpers.js';
 import { HttpException } from "../../../utils/errors.js";
 import { SpendLimitTimeframe } from '../../../types/enums/SpendLimitTimeframe.enum.js';
@@ -26,7 +26,7 @@ export const buildAdjustSpendLimitTransaction = async (
         ixs,
         lookupTables,
         signers
-    } = await user.makeAdjustSpendLimitsIxs(
+    } = await user.makeInitiateSpendLimitsIxs(
         new BN(spendLimitTransactionBaseUnits),
         new BN(spendLimitTimeframeBaseUnits),
         new BN(spendLimitTimeframe),

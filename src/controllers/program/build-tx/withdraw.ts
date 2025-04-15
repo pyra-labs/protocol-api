@@ -1,5 +1,5 @@
-import { AddressLookupTableAccount, Connection, PublicKey, TransactionInstruction } from '@solana/web3.js';
-import { getTokenProgram, MarketIndex, TOKENS, makeCreateAtaIxIfNeeded, QuartzUser, QuartzClient } from '@quartz-labs/sdk';
+import type { AddressLookupTableAccount, Connection, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { getTokenProgram, type MarketIndex, TOKENS, makeCreateAtaIxIfNeeded, type QuartzUser, type QuartzClient } from '@quartz-labs/sdk';
 import { createCloseAccountInstruction, getAssociatedTokenAddress } from '@solana/spl-token';
 import { HttpException } from '../../../utils/errors.js';
 import { buildTransaction, getWsolMint } from '../../../utils/helpers.js';
@@ -64,7 +64,7 @@ async function makeWithdrawIxs(
     const {
         ixs,
         lookupTables
-    } = await user.makeWithdrawIx(amountBaseUnits, marketIndex, reduceOnly);
+    } = await user.makeInitiateWithdrawIx(amountBaseUnits, marketIndex, reduceOnly);
     return {
         ixs: [...oix_createAta, ...ixs, ...oix_closeWsol],
         lookupTables: [...lookupTables]
