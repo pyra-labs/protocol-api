@@ -197,7 +197,7 @@ export class UserController extends Controller{
             const getAvailableCreditUsdcBaseUnits = await user
                 .getAvailableCreditUsdcBaseUnits();
 
-            res.status(200).json(getAvailableCreditUsdcBaseUnits);
+            res.status(200).json(getAvailableCreditUsdcBaseUnits.toNumber());
         } catch (error) {
             next(error);
         }
