@@ -4,9 +4,8 @@ import { HttpException } from '../../utils/errors.js';
 import { buildAdjustSpendLimitTransaction } from './build-tx/adjustSpendLimit.js';
 import { Controller } from '../../types/controller.class.js';
 import { QuartzClient, type MarketIndex } from '@quartz-labs/sdk';
-import { SwapMode } from '@jup-ag/api';
+import type { SwapMode } from '@jup-ag/api';
 import config from '../../config/config.js';
-import { buildDepositTransaction } from './build-tx/deposit.js';
 import { buildInitAccountTransaction } from './build-tx/initAccount.js';
 import { buildUpgradeAccountTransaction } from './build-tx/upgradeAccount.js';
 import { buildWithdrawTransaction } from './build-tx/withdraw.js';
@@ -43,7 +42,7 @@ export class BuildTxController extends Controller {
                 throw new HttpException(400, "Spend limit timeframe base units is required");
             }
 
-            let spendLimitTimeframe = Number(req.query.spendLimitTimeframe);
+            const spendLimitTimeframe = Number(req.query.spendLimitTimeframe);
             if (!spendLimitTimeframe) {
                 throw new HttpException(400, "Spend limit timeframe is required");
             }
@@ -152,52 +151,6 @@ export class BuildTxController extends Controller {
                 useMaxAmount,
                 this.connection,
                 config.FLASH_LOAN_CALLER,
-                quartzClient
-            );
-            
-            res.status(200).json({ transaction: serializedTx });
-            return;
-        } catch (error) {
-            next(error);
-        }
-    }
-
-    deposit = async (req: Request, res: Response, next: NextFunction) => {
-        try {
-            const address = new PublicKey(req.query.address as string);
-            if (!address) {
-                throw new HttpException(400, "Wallet address is required");
-            }
-
-            const amountBaseUnits = Number(req.query.amountBaseUnits);
-            if (!amountBaseUnits) {
-                throw new HttpException(400, "Amount base units is required");
-            }
-
-            const marketIndex = Number(req.query.marketIndex) as MarketIndex;
-            if (!marketIndex) {
-                throw new HttpException(400, "Market index is required");
-            }
-
-            const repayingLoan = req.query.repayingLoan === "true";
-            if (repayingLoan === undefined || repayingLoan === null) {
-                throw new HttpException(400, "Repaying loan is required");
-            }
-
-            const useMaxAmount = (req.query.useMaxAmount as string) === "true";
-            if (!useMaxAmount) {
-                throw new HttpException(400, "Use max amount is required");
-            }
-
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);
-
-            const serializedTx = await buildDepositTransaction(
-                address,
-                amountBaseUnits,
-                marketIndex,
-                repayingLoan,
-                useMaxAmount,
-                this.connection,
                 quartzClient
             );
             

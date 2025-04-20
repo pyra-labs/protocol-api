@@ -13,7 +13,6 @@ export class BuildTxRoute extends Route {
         this.router.get("/init-account", this.controller.initAccount);
         this.router.get("/close-account", this.controller.closeAccount);
         this.router.get("/collateral-repay", this.controller.collateralRepay);
-        this.router.get("/deposit", this.controller.deposit);
         this.router.get("/upgrade-account", this.controller.upgradeAccount);
         this.router.get("/withdraw", this.controller.withdraw);
     }

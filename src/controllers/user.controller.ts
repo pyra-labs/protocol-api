@@ -145,10 +145,16 @@ export class UserController extends Controller{
             const address = this.validateAddress(req.query.address as string);
             const user = await this.getQuartzUser(address);
 
-            const withdrawLimits = await retryWithBackoff(
+            const withdrawLimitsBN = await retryWithBackoff(
                 () => user.getMultipleWithdrawalLimits(marketIndices, true),
                 3
             );
+
+            const withdrawLimits = Object.entries(withdrawLimitsBN).reduce((acc, [index, limit]) => {
+                return Object.assign(acc, {
+                    [index]: limit.toNumber()
+                });
+            }, {} as Record<MarketIndex, number>);
 
             res.status(200).json(withdrawLimits);
         } catch (error) {
