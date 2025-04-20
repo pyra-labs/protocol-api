@@ -21,7 +21,7 @@ export const buildWithdrawTransaction = async (
     }
     
     if (useMaxAmount) {
-        amountBaseUnits = await user.getWithdrawalLimit(marketIndex, !allowLoan);
+        amountBaseUnits = (await user.getWithdrawalLimit(marketIndex, !allowLoan)).toNumber();
     }
 
     const {
