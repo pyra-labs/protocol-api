@@ -64,7 +64,7 @@ async function makeWithdrawIxs(
     const {
         ixs,
         lookupTables
-    } = await user.makeInitiateWithdrawIx(amountBaseUnits, marketIndex, reduceOnly);
+    } = await user.makeInitiateWithdrawIxs(amountBaseUnits, marketIndex, reduceOnly);
     return {
         ixs: [...oix_createAta, ...ixs, ...oix_closeWsol],
         lookupTables: [...lookupTables]

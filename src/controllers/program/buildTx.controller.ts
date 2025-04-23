@@ -10,7 +10,6 @@ import { buildInitAccountTransaction } from './build-tx/initAccount.js';
 import { buildUpgradeAccountTransaction } from './build-tx/upgradeAccount.js';
 import { buildWithdrawTransaction } from './build-tx/withdraw.js';
 import { buildCollateralRepayTransaction } from './build-tx/collateralRepay.js';
-import { buildCloseAccountTransaction } from './build-tx/closeAccount.js';
 
 
 export class BuildTxController extends Controller {
@@ -80,29 +79,6 @@ export class BuildTxController extends Controller {
             res.status(200).json({ transaction: serializedTx });
             return;
 
-        } catch (error) {
-            next(error);
-        }
-    }
-
-
-    async closeAccount(req: Request, res: Response, next: NextFunction) {
-        try {
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
-
-            const address = new PublicKey(req.query.address as string);
-            if (!address) {
-                throw new HttpException(400, "Wallet address is required");
-            }
-
-            const serializedTx = await buildCloseAccountTransaction(
-                address,
-                this.connection,
-                quartzClient
-            );
-            
-            res.status(200).json({ transaction: serializedTx });
-            return;
         } catch (error) {
             next(error);
         }

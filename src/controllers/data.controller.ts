@@ -5,7 +5,7 @@ import config from "../config/config.js";
 import { YIELD_CUT } from "../config/constants.js";
 import { bnToDecimal, getGoogleAccessToken, getTimestamp } from "../utils/helpers.js";
 import { WebflowClient } from "webflow-api";
-import { baseUnitToDecimal, MARKET_INDEX_USDC, MarketIndex, QuartzClient, retryWithBackoff } from "@quartz-labs/sdk";
+import { baseUnitToDecimal, delay, MARKET_INDEX_USDC, type MarketIndex, QuartzClient, retryWithBackoff } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
 import { PriceFetcherService } from "../services/priceFetcher.service.js";
 
@@ -49,42 +49,46 @@ export class DataController extends Controller {
     }
 
     public getTVL = async (_: Request, res: Response, next: NextFunction) => {
-        const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
-
         try {
-            const users = await retryWithBackoff(
-                async () => {
-                    const owners = await quartzClient.getAllQuartzAccountOwnerPubkeys();
-                    const users = await quartzClient.getMultipleQuartzAccounts(owners);
-                    return users;
-                }
+            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);   
+
+            const owners = await quartzClient.getAllQuartzAccountOwnerPubkeys();
+            const users = await quartzClient.getMultipleQuartzAccounts(owners).then(
+                (accounts) => accounts.filter((account) => account !== null)
             );
 
-            let totalCollateralValue = 0;
-            let totalLoansValue = 0;
+            await delay(1_000); // Prevent RPC rate limiting
 
             const prices = await this.priceFetcher.getPrices();
+            let collateral = 0;
+            let loans = 0;
+
             for (const user of users) {
-                if (!user) continue; // TODO: Remove once deleted Drift users is fixed
+                const collateralValueUsdc = await user.getTotalCollateralValue();
+                const collateralValue = baseUnitToDecimal(collateralValueUsdc, MARKET_INDEX_USDC);
 
-                const balances = await user.getMultipleTokenBalances([...MarketIndex]);
+                const liabilityValueUsdc = await user.getTotalSpotLiabilityValue();
+                const liabilityValue = baseUnitToDecimal(liabilityValueUsdc, MARKET_INDEX_USDC);
+                const idleBalance = await user.getAllDepositAddressBalances();
 
-                for (const [index, balance] of Object.entries(balances)) {
-                    const marketIndex = Number(index) as MarketIndex;
-                    const price = prices[marketIndex];
-                    const value = baseUnitToDecimal(balance.toNumber(), marketIndex) * price;
-                    if (value > 0) {
-                        totalCollateralValue += value;
-                    } else {
-                        totalLoansValue += Math.abs(value);
-                    }
+                let idleValue = 0;
+                for (const [index, balance] of Object.entries(idleBalance)) {
+                    const marketIndex = Number.parseInt(index) as MarketIndex;
+
+                    const balanceDecimal = baseUnitToDecimal(balance.toNumber(), marketIndex);
+                    idleValue += prices[marketIndex] * balanceDecimal;
                 }
+                
+                collateral += collateralValue + idleValue;
+                loans += liabilityValue;
+
+                await delay(1_000); // Prevent RPC rate limiting
             }
 
             res.status(200).json({
-                collateral: totalCollateralValue.toFixed(2),
-                loans: totalLoansValue.toFixed(2),
-                net: (totalCollateralValue - totalLoansValue).toFixed(2)
+                collateral: collateral.toFixed(2),
+                loans: loans.toFixed(2),
+                net: (collateral - loans).toFixed(2)
             });
         } catch (error) {
             next(error);
