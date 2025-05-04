@@ -31,7 +31,6 @@
     "helmet": "^8.0.0",
     "hpp": "^0.2.3",
     "node-cache": "^5.1.2",
-    "webflow-api": "^3.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
