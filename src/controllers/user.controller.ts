@@ -10,7 +10,7 @@ import type { SpendLimitsOrderAccountResponse, WithdrawOrderAccountResponse } fr
 export class UserController extends Controller{
     private quartzClientPromise: Promise<QuartzClient>;
     private connection: Connection;
-    private rateCache: Record<string, { depositRate: number; borrowRate: number; timestamp: number }> = {};
+    private rateCache: Record<string, { depositRate: number; borrowRate: number; ltv: number; timestamp: number }> = {};
     private RATE_CACHE_DURATION = 60_000;
 
     constructor() {
@@ -86,11 +86,14 @@ export class UserController extends Controller{
                     } catch {
                         throw new HttpException(400, `Could not find rates for spot market index ${index}`);
                     }
+
+                    const ltv = await quartzClient.getCollateralWeight(index);
                 
                     // Update cache
                     this.rateCache[index] = {
                         depositRate: bnToDecimal(depositRateBN, 6),
                         borrowRate: bnToDecimal(borrowRateBN, 6),
+                        ltv: ltv,
                         timestamp: now
                     };
                 });
@@ -102,12 +105,17 @@ export class UserController extends Controller{
                 Object.assign(acc, {
                     [index]: {
                         depositRate: this.rateCache[index]?.depositRate,
-                        borrowRate: this.rateCache[index]?.borrowRate
+                        borrowRate: this.rateCache[index]?.borrowRate,
+                        ltv: this.rateCache[index]?.ltv
                     }
                 }
             ), {} as Record<
                 MarketIndex, 
-                { depositRate: number | undefined; borrowRate: number | undefined }>
+                { 
+                    depositRate: number | undefined; 
+                    borrowRate: number | undefined; 
+                    ltv: number | undefined 
+                }>
             );
 
             res.status(200).json(rates);
