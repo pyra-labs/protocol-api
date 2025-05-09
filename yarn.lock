@@ -809,6 +809,13 @@
     bs58 "^5.0.0"
     jito-ts "^3.0.1"
 
+"@quartz-labs/connection@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@quartz-labs/connection/-/connection-2.0.0.tgz#07748674257356f26fac60b04a4cc4911b098f3d"
+  integrity sha512-t7Jwr3217CfncypxQh53fDt+LRVbBu1wWIXMNabvkF8wm7B/WaSlk2DYOfY/ZIdvMQfacwnv890vRNwwoQ5wXA==
+  dependencies:
+    "@solana/web3.js" "1.98.0"
+
 "@quartz-labs/logger@1.1.0":
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@quartz-labs/logger/-/logger-1.1.0.tgz#de67a49e61249336b593103cf5d0b5ffb3bcf956"
@@ -819,7 +826,21 @@
     winston "^3.17.0"
     zod "^3.24.1"
 
-"@quartz-labs/sdk@0.18.3":
+"@quartz-labs/sdk@0.19.0":
+  version "0.19.0"
+  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.19.0.tgz#3f52103b3d6d8155d9886e19d0d19c19044b27ee"
+  integrity sha512-sBya9h8vdeI+7fwkPtlPpKxbpZsXpyZtcqHrwtIDZNeISTT5lfqSv5V0MaiInGNbatqK494iqY5JJO+uvZkK0A==
+  dependencies:
+    "@coral-xyz/anchor" "^0.29.0"
+    "@drift-labs/sdk" "2.121.0-beta.5"
+    "@jup-ag/api" "6.0.30"
+    "@pythnetwork/pyth-solana-receiver" "^0.9.1"
+    "@quartz-labs/connection" "^2.0.0"
+    "@quartz-labs/sdk" "^0.18.3"
+    "@solana/spl-token" "^0.4.9"
+    bn.js "^5.2.1"
+
+"@quartz-labs/sdk@^0.18.3":
   version "0.18.3"
   resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.18.3.tgz#50d15ce6c2d4f37b140613da6f484dab8b097a57"
   integrity sha512-u+AAGobXT56zkGpjWJu0BN9n4H7B3XRWbS487gTZgw7OSIw/UyfHxOkj6VhjdOHINLGkfUg62+zOikXDQG5hww==
@@ -1080,7 +1101,7 @@
     "@wallet-standard/base" "^1.1.0"
     "@wallet-standard/features" "^1.1.0"
 
-"@solana/web3.js@1.92.3", "@solana/web3.js@^1.17.0", "@solana/web3.js@^1.21.0", "@solana/web3.js@^1.30.2", "@solana/web3.js@^1.32.0", "@solana/web3.js@^1.36.0", "@solana/web3.js@^1.56.2", "@solana/web3.js@^1.68.0", "@solana/web3.js@^1.77.3", "@solana/web3.js@^1.90.0", "@solana/web3.js@^1.93.2", "@solana/web3.js@^1.95.8", "@solana/web3.js@^1.98.0", "@solana/web3.js@~1.77.3":
+"@solana/web3.js@1.92.3", "@solana/web3.js@1.98.0", "@solana/web3.js@^1.17.0", "@solana/web3.js@^1.21.0", "@solana/web3.js@^1.30.2", "@solana/web3.js@^1.32.0", "@solana/web3.js@^1.36.0", "@solana/web3.js@^1.56.2", "@solana/web3.js@^1.68.0", "@solana/web3.js@^1.77.3", "@solana/web3.js@^1.90.0", "@solana/web3.js@^1.93.2", "@solana/web3.js@^1.95.8", "@solana/web3.js@^1.98.0", "@solana/web3.js@~1.77.3":
   version "1.98.0"
   resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.98.0.tgz#21ecfe8198c10831df6f0cfde7f68370d0405917"
   integrity sha512-nz3Q5OeyGFpFCR+erX2f6JPt3sKhzhYcSycBCSPkWjzSVDh/Rr1FqTVMRe58FKO16/ivTUcuJjeS5MyBvpkbzA==

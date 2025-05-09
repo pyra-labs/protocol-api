@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
 import { buildAdjustSpendLimitTransaction } from './build-tx/adjustSpendLimit.js';
 import { Controller } from '../../types/controller.class.js';
@@ -10,21 +10,21 @@ import { buildInitAccountTransaction } from './build-tx/initAccount.js';
 import { buildUpgradeAccountTransaction } from './build-tx/upgradeAccount.js';
 import { buildWithdrawTransaction } from './build-tx/withdraw.js';
 import { buildCollateralRepayTransaction } from './build-tx/collateralRepay.js';
-
+import AdvancedConnection from '@quartz-labs/connection';
 
 export class BuildTxController extends Controller {
-    private connection: Connection;
+    private connection: AdvancedConnection;
     private quartzClientPromise: Promise<QuartzClient>;
 
     constructor() {
         super();
-        this.connection = new Connection(config.RPC_URL);
-        this.quartzClientPromise = QuartzClient.fetchClient(this.connection);
+        this.connection = new AdvancedConnection(config.RPC_URLS);
+        this.quartzClientPromise = QuartzClient.fetchClient({connection: this.connection});
     }
 
     public adjustSpendLimit = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
+            const quartzClient = await this.quartzClientPromise;    
 
             const address = new PublicKey(req.query.address as string);
             if (!address) {
@@ -69,7 +69,7 @@ export class BuildTxController extends Controller {
                 throw new HttpException(400, "Wallet address is required");
             }
 
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
+            const quartzClient = await this.quartzClientPromise;    
             const serializedTx = await buildInitAccountTransaction(
                 address,
                 this.connection,
@@ -86,7 +86,7 @@ export class BuildTxController extends Controller {
 
     async collateralRepay(req: Request, res: Response, next: NextFunction) {
         try {
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
+            const quartzClient = await this.quartzClientPromise;    
 
             const address = new PublicKey(req.query.address as string);
             if (!address) {
@@ -124,10 +124,10 @@ export class BuildTxController extends Controller {
                 marketIndexLoan,
                 marketIndexCollateral,
                 swapMode,
-                useMaxAmount,
                 this.connection,
                 config.FLASH_LOAN_CALLER,
-                quartzClient
+                quartzClient,
+                useMaxAmount
             );
             
             res.status(200).json({ transaction: serializedTx });
@@ -144,7 +144,7 @@ export class BuildTxController extends Controller {
                 throw new HttpException(400, "Wallet address is required");
             }
 
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
+            const quartzClient = await this.quartzClientPromise;    
             const serializedTx = await buildUpgradeAccountTransaction(
                 address,
                 this.connection,
@@ -186,7 +186,7 @@ export class BuildTxController extends Controller {
                 throw new HttpException(400, "Use max amount is required");
             }
 
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
+            const quartzClient = await this.quartzClientPromise;    
             const serializedTx = await buildWithdrawTransaction(
                 address,
                 amountBaseUnits,

@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
 import { AccountStatus } from '../../types/enums/AccountStatus.enum.js';
 import { Controller } from '../../types/controller.class.js';
@@ -7,15 +7,16 @@ import config from '../../config/config.js';
 import { QuartzClient } from '@quartz-labs/sdk';
 import { checkHasVaultHistory, checkIsVaultInitialized, checkRequiresUpgrade } from './program-data/accountStatus.js';
 import { getSpendLimits } from './program-data/spendLimits.js';
+import AdvancedConnection from '@quartz-labs/connection';
 
 export class ProgramDataController extends Controller {
-    private connection: Connection;
+    private connection: AdvancedConnection;
     private quartzClientPromise: Promise<QuartzClient>;
 
     constructor() {
         super();
-        this.connection = new Connection(config.RPC_URL);
-        this.quartzClientPromise = QuartzClient.fetchClient(this.connection);
+        this.connection = new AdvancedConnection(config.RPC_URLS);
+        this.quartzClientPromise = QuartzClient.fetchClient({connection: this.connection});
     }
 
     public getAccountStatus = async (req: Request, res: Response, next: NextFunction) => {
@@ -66,7 +67,7 @@ export class ProgramDataController extends Controller {
                 throw new HttpException(400, "Wallet address is required");
             }
 
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
+            const quartzClient = await this.quartzClientPromise;    
             const spendLimits = await getSpendLimits(address, this.connection, quartzClient);
 
             res.status(200).json(spendLimits);

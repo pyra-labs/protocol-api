@@ -1,10 +1,11 @@
 import type { NextFunction, Request, Response } from 'express';
-import { Connection, TransactionExpiredBlockheightExceededError, VersionedTransaction } from '@solana/web3.js';
+import { TransactionExpiredBlockheightExceededError, VersionedTransaction } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
 import { Controller } from '../../types/controller.class.js';
 import { retryWithBackoff } from '@quartz-labs/sdk';
 import { z } from 'zod';
 import config from '../../config/config.js';
+import AdvancedConnection from '@quartz-labs/connection';
 
 const transactionSchema = z.object({
     transaction: z.string()
@@ -19,11 +20,11 @@ const transactionSchema = z.object({
 
 export class TxController extends Controller {
     private readonly MAX_DURATION = 70; // 70 second maximum in Vercel
-    private connection: Connection;
+    private connection: AdvancedConnection;
 
     constructor() {
         super();
-        this.connection = new Connection(config.RPC_URL);
+        this.connection = new AdvancedConnection(config.RPC_URLS);
     }
 
     public confirmTx = async (req: Request, res: Response, next: NextFunction) => {
