@@ -6,7 +6,16 @@ import { z } from 'zod';
 dotenv.config();
 
 const envSchema = z.object({
-    RPC_URL: z.string().url(),
+    RPC_URLS: z.string()
+        .transform((str) => {
+            try {
+                const urls = str.split(',').map(url => url.trim());
+                if (!urls.every(url => url.startsWith("https"))) throw new Error();
+                return urls;
+            } catch {
+                throw new Error("Invalid RPC_URLS format: must be comma-separated URLs starting with https");
+            }
+        }),
     PORT: z.coerce.number().min(0),
     EMAIL_TO: z.string()
         .transform((str) => {

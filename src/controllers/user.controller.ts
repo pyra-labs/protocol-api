@@ -1,22 +1,23 @@
 import config from "../config/config.js";
 import type { NextFunction, Request, Response } from "express";
 import { bnToDecimal } from "../utils/helpers.js";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
 import type { SpendLimitsOrderAccountResponse, WithdrawOrderAccountResponse } from "../types/orders.interface.js";
+import AdvancedConnection from "@quartz-labs/connection";
 
 export class UserController extends Controller{
     private quartzClientPromise: Promise<QuartzClient>;
-    private connection: Connection;
+    private connection: AdvancedConnection;
     private rateCache: Record<string, { depositRate: number; borrowRate: number; ltv: number; timestamp: number }> = {};
     private RATE_CACHE_DURATION = 60_000;
 
     constructor() {
         super();
-        this.connection = new Connection(config.RPC_URL);
-        this.quartzClientPromise = QuartzClient.fetchClient(this.connection);
+        this.connection = new AdvancedConnection(config.RPC_URLS);
+        this.quartzClientPromise = QuartzClient.fetchClient({connection: this.connection});
     }
 
     private validateAddress(address: string): PublicKey {
@@ -30,7 +31,7 @@ export class UserController extends Controller{
 
     private async getQuartzUser(pubkey: PublicKey): Promise<QuartzUser> {
         try {
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
+            const quartzClient = await this.quartzClientPromise;    
             return await retryWithBackoff(
                 () => quartzClient.getQuartzAccount(pubkey),
                 2
@@ -60,7 +61,7 @@ export class UserController extends Controller{
 
     public getRate = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
+            const quartzClient = await this.quartzClientPromise;    
 
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 

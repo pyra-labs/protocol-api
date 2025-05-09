@@ -1,11 +1,12 @@
-import { AddressLookupTableAccount, Connection, Keypair, PublicKey, TransactionInstruction, VersionedTransaction } from '@solana/web3.js';
-import { baseUnitToDecimal, MarketIndex, QuartzClient, TOKENS, DummyWallet, QuartzUser, getTokenProgram, makeCreateAtaIxIfNeeded, getComputeUnitPriceIx } from '@quartz-labs/sdk';
+import { AddressLookupTableAccount, PublicKey, TransactionInstruction, type Connection, type Keypair, type VersionedTransaction } from '@solana/web3.js';
+import { baseUnitToDecimal, type MarketIndex, QuartzClient, TOKENS, DummyWallet, type QuartzUser, getTokenProgram, makeCreateAtaIxIfNeeded, getComputeUnitPriceIx } from '@quartz-labs/sdk';
 import { getConfig as getMarginfiConfig, MarginfiClient } from '@mrgnlabs/marginfi-client-v2';
-import { SwapMode, type QuoteResponse } from '@jup-ag/api';
+import type { SwapMode, QuoteResponse } from '@jup-ag/api';
 import { createCloseAccountInstruction, getAssociatedTokenAddress } from '@solana/spl-token';
 import { HttpException } from '../../../utils/errors.js';
 import { fetchAndParse } from '../../../utils/helpers.js';
 import { JUPITER_SLIPPAGE_BPS } from '../../../config/constants.js';
+import type AdvancedConnection from '@quartz-labs/connection';
 
 export const buildCollateralRepayTransaction = async (
     address: PublicKey,
@@ -13,12 +14,12 @@ export const buildCollateralRepayTransaction = async (
     marketIndexLoan: MarketIndex,
     marketIndexCollateral: MarketIndex,
     swapMode: SwapMode,
-    useMaxAmount: boolean = false,
-    connection: Connection,
+    connection: AdvancedConnection,
     flashLoanCaller: Keypair,
-    quartzClient?: QuartzClient
+    quartzClient?: QuartzClient,
+    useMaxAmount = false
 ): Promise<string> => {
-    const client = quartzClient || await QuartzClient.fetchClient(connection);
+    const client = quartzClient || await QuartzClient.fetchClient({connection});
     
     let user: QuartzUser;
     try {
@@ -48,7 +49,6 @@ export const buildCollateralRepayTransaction = async (
 
     const transaction = await buildFlashLoanTransaction(
         connection,
-        address,
         flashLoanCaller,
         flashLoanAmountBaseUnits,
         marketIndexCollateral,
@@ -76,7 +76,7 @@ async function makeCollateralRepayIxs(
     const mintLoan = TOKENS[marketIndexLoan].mint;
 
     const jupiterQuoteEndpoint
-        = `https://quote-api.jup.ag/v6/quote?inputMint=${mintCollateral.toBase58()}&outputMint=${mintLoan.toBase58()}&amount=${amountSwapBaseUnits}&slippageBps=${JUPITER_SLIPPAGE_BPS}&swapMode=${swapMode}&onlyDirectRoutes=true`;
+        = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${mintCollateral.toBase58()}&outputMint=${mintLoan.toBase58()}&amount=${amountSwapBaseUnits}&slippageBps=${JUPITER_SLIPPAGE_BPS}&swapMode=${swapMode}&onlyDirectRoutes=true`;
     const jupiterQuote: QuoteResponse = await fetchAndParse(jupiterQuoteEndpoint);
     const collateralRequiredForSwap = Math.ceil(Number(jupiterQuote.inAmount) * (1 + (JUPITER_SLIPPAGE_BPS / 10_000)));
 
@@ -112,7 +112,7 @@ async function makeJupiterIx(
     lookupTables: AddressLookupTableAccount[]
 }> {
     const instructions = await (
-        await fetch('https://api.jup.ag/swap/v1/swap-instructions', {
+        await fetch('https://lite-api.jup.ag/swap/v1/swap-instructions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -122,7 +122,6 @@ async function makeJupiterIx(
                 userPublicKey: address.toBase58(),
             })
         })
-        // biome-ignore lint: Allow any for Jupiter API response
     ).json() as any;
     
     if (instructions.error) {
@@ -134,11 +133,9 @@ async function makeJupiterIx(
         addressLookupTableAddresses
     } = instructions;
 
-    // biome-ignore lint: Allow any for Jupiter API response
     const deserializeInstruction = (instruction: any) => {
         return new TransactionInstruction({
             programId: new PublicKey(instruction.programId),
-            // biome-ignore lint: Allow any for Jupiter API response
             keys: instruction.accounts.map((key: any) => ({
                 pubkey: new PublicKey(key.pubkey),
                 isSigner: key.isSigner,
@@ -181,7 +178,6 @@ async function makeJupiterIx(
 
 async function buildFlashLoanTransaction(
     connection: Connection,
-    owner: PublicKey,
     caller: Keypair,
     flashLoanAmountBaseUnits: number,
     flashLoanMarketIndex: MarketIndex,

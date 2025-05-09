@@ -1,19 +1,19 @@
 import type { NextFunction, Request, Response } from "express";
-import { Connection } from "@solana/web3.js";
 import config from "../config/config.js";
 import { baseUnitToDecimal, delay, MARKET_INDEX_USDC, type MarketIndex, QuartzClient, retryWithBackoff } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
 import { PriceFetcherService } from "../services/priceFetcher.service.js";
+import AdvancedConnection from "@quartz-labs/connection";
 
 export class DataController extends Controller {
     private quartzClientPromise: Promise<QuartzClient>;
     private priceFetcher: PriceFetcherService;
-    private connection: Connection;
+    private connection: AdvancedConnection;
 
     constructor() {
         super();
-        this.connection = new Connection(config.RPC_URL);
-        this.quartzClientPromise = QuartzClient.fetchClient(this.connection);
+        this.connection = new AdvancedConnection(config.RPC_URLS);
+        this.quartzClientPromise = QuartzClient.fetchClient({connection: this.connection});
         this.priceFetcher = PriceFetcherService.getPriceFetcherService();
     }
 
@@ -28,7 +28,7 @@ export class DataController extends Controller {
     }
 
     public getUsers = async (_: Request, res: Response, next: NextFunction) => {
-        const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);    
+        const quartzClient = await this.quartzClientPromise;    
 
         try {
             const owners = await retryWithBackoff(
@@ -46,7 +46,7 @@ export class DataController extends Controller {
 
     public getTVL = async (_: Request, res: Response, next: NextFunction) => {
         try {
-            const quartzClient = await this.quartzClientPromise || QuartzClient.fetchClient(this.connection);   
+            const quartzClient = await this.quartzClientPromise;   
 
             const owners = await quartzClient.getAllQuartzAccountOwnerPubkeys();
             const users = await quartzClient.getMultipleQuartzAccounts(owners).then(
