@@ -112,7 +112,8 @@ export class TxController extends Controller {
             if (error instanceof SendTransactionError) {
                 const logs = await error.getLogs(this.connection)
                     .catch(() => [error.message]);
-                throw new HttpException(500, "Transaction failed, error logs: " + logs);
+                next(new Error("Transaction failed, error logs: " + logs));
+                return;
             }
             next(error);
         }
