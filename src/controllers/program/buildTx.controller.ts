@@ -118,55 +118,31 @@ export class BuildTxController extends Controller {
             const quartzClient = await this.quartzClientPromise;
 
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "Wallet address is required",
-                    invalid_type_error: "Wallet address must be a string"
-                }).refine((str) => {
-                    try {
-                        new PublicKey(str);
-                        return true;
-                    } catch {
-                        return false;
-                    }
-                }, {
-                    message: "Wallet address is not a valid Solana public key"
-                }).transform(str => new PublicKey(str)),
-                amountSwapBaseUnits: z.coerce.number({
-                    required_error: "Amount swap base units is required",
-                    invalid_type_error: "Amount swap base units must be a number"
-                }),
-                marketIndexLoan: z.coerce.number({
-                    required_error: "Market index loan is required",
-                    invalid_type_error: "Market index loan must be a number"
-                }).refine((val): val is MarketIndex => {
-                    return Object.values(MarketIndex).includes(val as MarketIndex);
-                }, {
-                    message: "Invalid market index loan value"
-                }),
-                marketIndexCollateral: z.coerce.number({
-                    required_error: "Market index collateral is required",
-                    invalid_type_error: "Market index collateral must be a number"
-                }).refine((val): val is MarketIndex => {
-                    return Object.values(MarketIndex).includes(val as MarketIndex);
-                }, {
-                    message: "Invalid market index collateral value"
-                }),
-                swapMode: z.string({
-                    required_error: "Swap mode is required",
-                    invalid_type_error: "Swap mode must be a string"
-                }).refine((val): val is SwapMode => {
-                    return Object.values(SwapMode).includes(val as SwapMode);
-                }, {
-                    message: "Invalid swap mode value"
-                }),
-                useMaxAmount: z.string({
-                    required_error: "Use max amount is required",
-                    invalid_type_error: "Use max amount must be a string"
-                })
-                    .refine((val) => val === "true" || val === "false", {
-                        message: "Use max amount must be either 'true' or 'false'"
-                    })
-                    .transform((val) => val === "true")
+                address: z.string().refine(
+                    (value) => {
+                        try {
+                            new PublicKey(value);
+                            return true;
+                        } catch {
+                            return false;
+                        }
+                    },
+                    { message: "Address is not a valid public key" }
+                ).transform(str => new PublicKey(str)),
+                amountSwapBaseUnits: z.coerce.number().refine(
+                    Number.isInteger,
+                    { message: "amountLoanBaseUnits must be an integer" }
+                ),
+                marketIndexLoan: z.coerce.number().refine(
+                    (value) => MarketIndex.includes(value as any),
+                    { message: "marketIndexLoan must be a valid market index" }
+                ).transform(val => val as MarketIndex),
+                marketIndexCollateral: z.coerce.number().refine(
+                    (value) => MarketIndex.includes(value as any),
+                    { message: "marketIndexCollateral must be a valid market index" }
+                ).transform(val => val as MarketIndex),
+                swapMode: z.nativeEnum(SwapMode),
+                useMaxAmount: z.boolean().optional().default(false),
             });
 
             const {
