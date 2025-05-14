@@ -1,7 +1,8 @@
+import type AdvancedConnection from '@quartz-labs/connection';
 import { getVaultPublicKey, retryWithBackoff } from '@quartz-labs/sdk';
 import type { Connection, PublicKey } from '@solana/web3.js';
 
-export const checkHasVaultHistory = async (wallet: PublicKey, connection: Connection): Promise<boolean> => {
+export async function checkHasVaultHistory(connection: AdvancedConnection, wallet: PublicKey): Promise<boolean> {
     const vaultPda = getVaultPublicKey(wallet);
     const signatures = await retryWithBackoff(
         async () => connection.getSignaturesForAddress(vaultPda),
@@ -11,20 +12,20 @@ export const checkHasVaultHistory = async (wallet: PublicKey, connection: Connec
     return isSignatureHistory;
 }
 
-export const checkIsVaultInitialized = async (wallet: PublicKey, connection: Connection): Promise<boolean> => {
+
+export async function checkIsVaultInitialized(connection: AdvancedConnection, wallet: PublicKey): Promise<boolean> {
     const vaultPda = getVaultPublicKey(wallet);
     const vaultPdaAccount = await retryWithBackoff(
         async () => connection.getAccountInfo(vaultPda),
-        2
+        5
     );
     return (vaultPdaAccount !== null);
 }
 
-export const checkRequiresUpgrade = async (wallet: PublicKey, connection: Connection): Promise<boolean> => {
+export async function checkRequiresUpgrade(connection: AdvancedConnection, wallet: PublicKey): Promise<boolean> {
     const vaultPda = getVaultPublicKey(wallet);
     const vaultPdaAccount = await retryWithBackoff(
-        async () => connection.getAccountInfo(vaultPda),
-        2
+        async () => connection.getAccountInfo(vaultPda)
     );
     if (vaultPdaAccount === null) return false;
 
