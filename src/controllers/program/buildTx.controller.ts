@@ -6,7 +6,6 @@ import { Controller } from '../../types/controller.class.js';
 import { QuartzClient, MarketIndex, QuartzUser, isMarketIndex, TOKENS, MARKET_INDEX_SOL, getTokenProgram, makeCreateAtaIxIfNeeded, BN, getTimeLockRentPayerPublicKey } from '@quartz-labs/sdk';
 import { SwapMode } from '@jup-ag/api';
 import config from '../../config/config.js';
-import { buildUpgradeAccountTransaction } from './build-tx/upgradeAccount.js';
 import { buildWithdrawTransaction } from './build-tx/withdraw.js';
 import { buildCollateralRepayTransaction } from './build-tx/collateralRepay.js';
 import AdvancedConnection from '@quartz-labs/connection';
@@ -229,11 +228,29 @@ export class BuildTxController extends Controller {
             const { address } = await validateParams(paramsSchema, req);
 
             const quartzClient = await this.quartzClientPromise;
-            const serializedTx = await buildUpgradeAccountTransaction(
-                address,
-                this.connection,
-                quartzClient
+
+            let user: QuartzUser;
+            try {
+                user = await quartzClient.getQuartzAccount(address);
+            } catch {
+                throw new HttpException(400, "User not found");
+            }
+
+            const {
+                ixs,
+                lookupTables,
+                signers
+            } = await user.makeUpgradeAccountIxs(
+                DEFAULT_CARD_TRANSACTION_LIMIT,
+                DEFAULT_CARD_TIMEFRAME_LIMIT,
+                DEFAULT_CARD_TIMEFRAME,
+                DEFAULT_CARD_TIMEFRAME_RESET
             );
+
+            const transaction = await buildTransaction(this.connection, ixs, address, lookupTables);
+            transaction.sign(signers);
+
+            const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
 
             res.status(200).json({ transaction: serializedTx });
             return;
