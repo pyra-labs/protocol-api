@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { TransactionExpiredBlockheightExceededError, VersionedTransaction } from '@solana/web3.js';
+import { SendTransactionError, TransactionExpiredBlockheightExceededError, VersionedTransaction } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
 import { Controller } from '../../types/controller.class.js';
 import { getTimeLockRentPayerPublicKey, retryWithBackoff } from '@quartz-labs/sdk';
@@ -109,6 +109,11 @@ export class TxController extends Controller {
             res.status(200).json({ signature });
         } catch (error) {
             console.error(error);
+            if (error instanceof SendTransactionError) {
+                const logs = await error.getLogs(this.connection)
+                    .catch(() => [error.message]);
+                throw new HttpException(500, "Transaction failed, error logs: " + logs);
+            }
             next(error);
         }
     }
