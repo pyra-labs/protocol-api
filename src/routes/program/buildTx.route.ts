@@ -18,5 +18,6 @@ export class BuildTxRoute extends Route {
         this.router.get("/fulfil-withdraw", this.controller.fulfilWithdraw);
         this.router.get("/fulfil-spend-limit", this.controller.fulfilSpendLimit);
         this.router.get("/increase-spend-limits", this.controller.increaseSpendLimits);
+        this.router.get("/rescue", this.controller.rescue);
     }
 }

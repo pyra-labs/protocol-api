@@ -594,4 +594,68 @@ export class BuildTxController extends Controller {
         }
     }
 
+    rescue = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const paramsSchema = z.object({
+                address: z.string({
+                    required_error: "Wallet address is required",
+                    invalid_type_error: "Wallet address must be a string"
+                }).refine((str) => {
+                    try {
+                        new PublicKey(str);
+                        return true;
+                    } catch {
+                        return false;
+                    }
+                }, {
+                    message: "Wallet address is not a valid Solana public key"
+                }).transform(str => new PublicKey(str)),
+                mint: z.string().refine(
+                    (value: string) => {
+                        try {
+                            new PublicKey(value);
+                            return true;
+                        } catch {
+                            return false;
+                        }
+                    },
+                    { message: "Mint is not a valid public key" }
+                ).transform(str => new PublicKey(str)),
+            });
+
+            const {
+                address,
+                mint
+            } = await validateParams(paramsSchema, req);
+
+            const quartzClient = await this.quartzClientPromise;
+            let user: QuartzUser;
+            try {
+                user = await quartzClient.getQuartzAccount(address);
+            } catch {
+                throw new HttpException(400, "User not found");
+            }
+
+            const {
+                ixs,
+                lookupTables,
+                signers
+            } = await user.makeRescueDepositIxs(mint);
+
+            const transaction = await buildTransaction(
+                this.connection,
+                ixs,
+                address,
+                lookupTables
+            );
+
+            transaction.sign(signers);
+            const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
+
+            res.status(200).json({ transaction: serializedTx });
+            return;
+        } catch (error) {
+            next(error);
+        }
+    }
 }
