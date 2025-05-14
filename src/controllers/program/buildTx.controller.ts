@@ -276,30 +276,16 @@ export class BuildTxController extends Controller {
                 }, {
                     message: "Wallet address is not a valid Solana public key"
                 }).transform(str => new PublicKey(str)),
-                amountBaseUnits: z.coerce.number({
-                    required_error: "Amount base units is required",
-                    invalid_type_error: "Amount base units must be a number"
-                }),
-                marketIndex: z.coerce.number({
-                    required_error: "Market index is required",
-                    invalid_type_error: "Market index must be a number"
-                }).refine((val): val is MarketIndex => {
-                    return Object.values(MarketIndex).includes(val as MarketIndex);
-                }, {
-                    message: "Invalid market index value"
-                }),
-                allowLoan: z.string({
-                    required_error: "Allow loan is required",
-                    invalid_type_error: "Allow loan must be a string"
-                }).transform((val) => val === "true"),
-                useMaxAmount: z.string({
-                    required_error: "Use max amount is required",
-                    invalid_type_error: "Use max amount must be a string"
-                })
-                    .refine((val) => val === "true" || val === "false", {
-                        message: "Use max amount must be either 'true' or 'false'"
-                    })
-                    .transform((val) => val === "true")
+                amountBaseUnits: z.number().refine(
+                    Number.isInteger,
+                    { message: "amountBaseUnits must be an integer" }
+                ),
+                allowLoan: z.boolean(),
+                marketIndex: z.number().refine(
+                    (value: number) => MarketIndex.includes(value as MarketIndex),
+                    { message: "marketIndex must be a valid market index" }
+                ).transform(val => val as MarketIndex),
+                useMaxAmount: z.boolean().optional().default(false),
             });
 
             const {
