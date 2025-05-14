@@ -6,6 +6,7 @@ import { retryWithBackoff } from '@quartz-labs/sdk';
 import { z } from 'zod';
 import config from '../../config/config.js';
 import AdvancedConnection from '@quartz-labs/connection';
+import { validateParams } from '../../utils/helpers.js';
 
 const transactionSchema = z.object({
     transaction: z.string()
@@ -29,10 +30,15 @@ export class TxController extends Controller {
 
     public confirmTx = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const signature = req.query.signature as string;
-            if (!signature) {
-                throw new HttpException(400, "Transaction signature is required");
-            }
+            const paramsSchema = z.object({
+                signature: z
+                    .string({
+                        required_error: "signature is required",
+                        invalid_type_error: "signature must be a string"
+                    }).min(1, "signature cannot be empty")
+            });
+
+            const { signature } = await validateParams(paramsSchema, req);
 
             const CONFIRMATION_METHOD_DURATION = 50_000; // Allow enough time for confirmTransaction to timeout
             const startTime = Date.now();
@@ -77,17 +83,23 @@ export class TxController extends Controller {
 
     public sendTransaction = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 
-        let body: z.infer<typeof transactionSchema>;
-        try {
-            body = transactionSchema.parse(req.body);
-        } catch {
-            throw new HttpException(400, "Invalid transaction");
-        }
+        const paramsSchema = z.object({
+            transaction: z.string()
+                .regex(/^[A-Za-z0-9+/]+={0,2}$/, 'Must be a valid base64 string')
+                .transform((val) => {
+                    const buffer = Buffer.from(val, 'base64');
+                    VersionedTransaction.deserialize(buffer); // Validate it's a valid VersionedTransaction
+                    return buffer;
+                }),
+            skipPreflight: z.boolean().optional().default(false),
+        });
+
+        const { transaction, skipPreflight } = await validateParams(paramsSchema, req);
 
         try {
             const signature = await retryWithBackoff(
-                async () => this.connection.sendRawTransaction(body.transaction, {
-                    skipPreflight: body.skipPreflight,
+                async () => this.connection.sendRawTransaction(transaction, {
+                    skipPreflight: skipPreflight,
                 }),
                 3
             );
