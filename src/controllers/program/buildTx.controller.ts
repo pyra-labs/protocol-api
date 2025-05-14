@@ -3,7 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
 import { buildAdjustSpendLimitTransaction } from './build-tx/adjustSpendLimit.js';
 import { Controller } from '../../types/controller.class.js';
-import { QuartzClient, MarketIndex } from '@quartz-labs/sdk';
+import { QuartzClient, MarketIndex, QuartzUser } from '@quartz-labs/sdk';
 import { SwapMode } from '@jup-ag/api';
 import config from '../../config/config.js';
 import { buildInitAccountTransaction } from './build-tx/initAccount.js';
@@ -12,7 +12,7 @@ import { buildWithdrawTransaction } from './build-tx/withdraw.js';
 import { buildCollateralRepayTransaction } from './build-tx/collateralRepay.js';
 import AdvancedConnection from '@quartz-labs/connection';
 import { z } from "zod";
-import { validateParams } from '../../utils/helpers.js';
+import { buildTransaction, validateParams } from '../../utils/helpers.js';
 import { SpendLimitTimeframe } from '../../types/enums/SpendLimitTimeframe.enum.js';
 
 export class BuildTxController extends Controller {
@@ -52,15 +52,11 @@ export class BuildTxController extends Controller {
                     { message: "spendLimitTimeframeBaseUnits must be an integer" }
                 ),
                 spendLimitTimeframe: z.coerce.number().refine(
-                    (value) => {
-                        return Object.values(SpendLimitTimeframe).filter(v => typeof v === 'number').includes(value);
+                    (value): value is SpendLimitTimeframe => {
+                        return Object.values(SpendLimitTimeframe).includes(value as SpendLimitTimeframe);
                     },
-                    { message: "spendLimitTimeframe must be a valid SpendLimitTimeframe" }
-                ).refine((val): val is SpendLimitTimeframe => {
-                    return Object.values(SpendLimitTimeframe).includes(val as SpendLimitTimeframe);
-                }, {
-                    message: "Invalid spend limit timeframe value"
-                }),
+                    { message: "spendLimitTimeframe must be a valid SpendLimitTimeframe value" }
+                ),
             });
 
             const { address, spendLimitTransactionBaseUnits, spendLimitTimeframeBaseUnits, spendLimitTimeframe } =
@@ -167,10 +163,10 @@ export class BuildTxController extends Controller {
                     required_error: "Use max amount is required",
                     invalid_type_error: "Use max amount must be a string"
                 })
-                .refine((val) => val === "true" || val === "false", {
-                    message: "Use max amount must be either 'true' or 'false'"
-                })
-                .transform((val) => val === "true")
+                    .refine((val) => val === "true" || val === "false", {
+                        message: "Use max amount must be either 'true' or 'false'"
+                    })
+                    .transform((val) => val === "true")
             });
 
             const {
@@ -272,18 +268,18 @@ export class BuildTxController extends Controller {
                     required_error: "Use max amount is required",
                     invalid_type_error: "Use max amount must be a string"
                 })
-                .refine((val) => val === "true" || val === "false", {
-                    message: "Use max amount must be either 'true' or 'false'"
-                })
-                .transform((val) => val === "true")
+                    .refine((val) => val === "true" || val === "false", {
+                        message: "Use max amount must be either 'true' or 'false'"
+                    })
+                    .transform((val) => val === "true")
             });
 
-            const { 
-                address, 
-                amountBaseUnits, 
-                marketIndex, 
-                allowLoan, 
-                useMaxAmount 
+            const {
+                address,
+                amountBaseUnits,
+                marketIndex,
+                allowLoan,
+                useMaxAmount
             } = await validateParams(paramsSchema, req);
 
             const quartzClient = await this.quartzClientPromise;
@@ -303,4 +299,72 @@ export class BuildTxController extends Controller {
             next(error);
         }
     }
+
+    cancelWithdraw = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const paramsSchema = z.object({
+                address: z.string({
+                    required_error: "Wallet address is required",
+                    invalid_type_error: "Wallet address must be a string"
+                }).refine((str) => {
+                    try {
+                        new PublicKey(str);
+                        return true;
+                    } catch {
+                        return false;
+                    }
+                }, {
+                    message: "Wallet address is not a valid Solana public key"
+                }).transform(str => new PublicKey(str)),
+                order: z.string().refine(
+                    (value: string) => {
+                        try {
+                            new PublicKey(value);
+                            return true;
+                        } catch {
+                            return false;
+                        }
+                    },
+                    { message: "Order is not a valid public key" }
+                ).transform(str => new PublicKey(str))
+            });
+
+            const {
+                address,
+                order
+            } = await validateParams(paramsSchema, req);
+
+            const quartzClient = await this.quartzClientPromise;
+            let user: QuartzUser;
+            try {
+                user = await quartzClient.getQuartzAccount(address);
+            } catch {
+                throw new HttpException(400, "User not found");
+            }
+
+            const {
+                ixs,
+                lookupTables,
+                signers
+            } = await user.makeCancelWithdrawIxs(
+                order
+            );
+
+            const transaction = await buildTransaction(
+                this.connection,
+                ixs,
+                address,
+                lookupTables
+            );
+            transaction.sign(signers);
+
+            const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
+
+            res.status(200).json({ transaction: serializedTx });
+            return;
+        } catch (error) {
+            next(error);
+        }
+    }
+
 }
