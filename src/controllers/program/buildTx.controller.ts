@@ -1,9 +1,9 @@
 import type { NextFunction, Request, Response } from 'express';
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
 import { buildAdjustSpendLimitTransaction } from './build-tx/adjustSpendLimit.js';
 import { Controller } from '../../types/controller.class.js';
-import { QuartzClient, MarketIndex, QuartzUser } from '@quartz-labs/sdk';
+import { QuartzClient, MarketIndex, QuartzUser, isMarketIndex, TOKENS, MARKET_INDEX_SOL, getTokenProgram, makeCreateAtaIxIfNeeded } from '@quartz-labs/sdk';
 import { SwapMode } from '@jup-ag/api';
 import config from '../../config/config.js';
 import { buildInitAccountTransaction } from './build-tx/initAccount.js';
@@ -14,6 +14,7 @@ import AdvancedConnection from '@quartz-labs/connection';
 import { z } from "zod";
 import { buildTransaction, validateParams } from '../../utils/helpers.js';
 import { SpendLimitTimeframe } from '../../types/enums/SpendLimitTimeframe.enum.js';
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 
 export class BuildTxController extends Controller {
     private connection: AdvancedConnection;
@@ -343,7 +344,90 @@ export class BuildTxController extends Controller {
         }
     }
 
-    fulfilSpendLimit= async (req: Request, res: Response, next: NextFunction) => {
+    fulfilWithdraw = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const paramsSchema = z.object({
+                address: z.string({
+                    required_error: "Wallet address is required",
+                    invalid_type_error: "Wallet address must be a string"
+                }).refine((str) => {
+                    try {
+                        new PublicKey(str);
+                        return true;
+                    } catch {
+                        return false;
+                    }
+                }, {
+                    message: "Wallet address is not a valid Solana public key"
+                }).transform(str => new PublicKey(str)),
+                order: z.string().refine(
+                    (value: string) => {
+                        try {
+                            new PublicKey(value);
+                            return true;
+                        } catch {
+                            return false;
+                        }
+                    },
+                    { message: "Order is not a valid public key" }
+                ).transform(str => new PublicKey(str))
+            });
+
+            const {
+                address,
+                order
+            } = await validateParams(paramsSchema, req);
+
+            const quartzClient = await this.quartzClientPromise;
+            let user: QuartzUser;
+            try {
+                user = await quartzClient.getQuartzAccount(address);
+            } catch {
+                throw new HttpException(400, "User not found");
+            }
+            
+            const orderAccount = await quartzClient.parseOpenWithdrawOrder(order);
+            const marketIndex = orderAccount.driftMarketIndex.toNumber() as MarketIndex;
+            if (!isMarketIndex(marketIndex)) throw new Error("Invalid market index");
+
+
+            // Create ATA for destination if needed (wSOL is already unwrapped)
+            let oix_createAta: TransactionInstruction[] = [];
+            const mint = TOKENS[marketIndex].mint;
+            if (mint !== TOKENS[MARKET_INDEX_SOL].mint) {
+                const destination = orderAccount.destination;
+                const mintTokenProgram = await getTokenProgram(this.connection, mint);
+                const ata = getAssociatedTokenAddressSync(mint, destination, true, mintTokenProgram);
+                oix_createAta = await makeCreateAtaIxIfNeeded(this.connection, ata, destination, mint, mintTokenProgram);
+            }
+
+            const {
+                ixs,
+                lookupTables,
+                signers
+            } = await user.makeFulfilWithdrawIxs(
+                order,
+                address
+            );
+
+            const transaction = await buildTransaction(
+                this.connection,
+                [...oix_createAta, ...ixs],
+                address,
+                lookupTables
+            );
+            transaction.sign(signers);
+
+            const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
+
+            res.status(200).json({ transaction: serializedTx });
+            return;
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    fulfilSpendLimit = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
                 address: z.string({
@@ -395,7 +479,7 @@ export class BuildTxController extends Controller {
             );
             const transaction = await buildTransaction(this.connection, ixs, address, lookupTables);
             transaction.sign(signers);
-    
+
             const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
 
             res.status(200).json({ transaction: serializedTx });
