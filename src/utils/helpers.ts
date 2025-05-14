@@ -8,6 +8,24 @@ import type { AddressLookupTableAccount } from "@solana/web3.js";
 import { ComputeBudgetProgram } from "@solana/web3.js";
 import { TransactionMessage } from "@solana/web3.js";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+import { z } from "zod";
+import { HttpException } from "./errors.js";
+import type { Request } from "express";
+
+export async function validateParams<T extends z.ZodSchema>(
+    schema: T, 
+    req: Request
+): Promise<z.infer<T>> {
+    try {
+        const params = req.method === "GET" ? req.query : req.body;
+        return await schema.parseAsync(params);
+    } catch (error) {
+        if (error instanceof z.ZodError && error.errors[0]) {
+            throw new HttpException(400, error.errors[0].message);
+        }
+        throw new HttpException(500, "Could not validate request parameters");
+    }
+}
 
 export function bnToDecimal(bn: BN, decimalPlaces: number): number {
     const decimalFactor = 10 ** decimalPlaces;
