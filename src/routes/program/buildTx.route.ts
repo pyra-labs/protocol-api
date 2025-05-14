@@ -9,7 +9,7 @@ export class BuildTxRoute extends Route {
     }
 
     protected initializeRoutes() {
-        this.router.get("/spend-limit", this.controller.adjustSpendLimit);
+        this.router.get("/adjust-spend-limit", this.controller.adjustSpendLimit);
         this.router.get("/init-account", this.controller.initAccount);
         this.router.get("/collateral-repay", this.controller.collateralRepay);
         this.router.get("/upgrade-account", this.controller.upgradeAccount);

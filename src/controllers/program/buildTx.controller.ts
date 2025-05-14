@@ -13,6 +13,7 @@ import { buildCollateralRepayTransaction } from './build-tx/collateralRepay.js';
 import AdvancedConnection from '@quartz-labs/connection';
 import { z } from "zod";
 import { validateParams } from '../../utils/helpers.js';
+import { SpendLimitTimeframe } from '../../types/enums/SpendLimitTimeframe.enum.js';
 
 export class BuildTxController extends Controller {
     private connection: AdvancedConnection;
@@ -42,18 +43,24 @@ export class BuildTxController extends Controller {
                 }, {
                     message: "Wallet address is not a valid Solana public key"
                 }).transform(str => new PublicKey(str)),
-                spendLimitTransactionBaseUnits: z.coerce.number({
-                    required_error: "Spend limit transaction base units is required",
-                    invalid_type_error: "Spend limit transaction base units must be a number"
+                spendLimitTransactionBaseUnits: z.coerce.number().refine(
+                    Number.isInteger,
+                    { message: "spendLimitTransactionBaseUnits must be an integer" }
+                ),
+                spendLimitTimeframeBaseUnits: z.coerce.number().refine(
+                    Number.isInteger,
+                    { message: "spendLimitTimeframeBaseUnits must be an integer" }
+                ),
+                spendLimitTimeframe: z.coerce.number().refine(
+                    (value) => {
+                        return Object.values(SpendLimitTimeframe).filter(v => typeof v === 'number').includes(value);
+                    },
+                    { message: "spendLimitTimeframe must be a valid SpendLimitTimeframe" }
+                ).refine((val): val is SpendLimitTimeframe => {
+                    return Object.values(SpendLimitTimeframe).includes(val as SpendLimitTimeframe);
+                }, {
+                    message: "Invalid spend limit timeframe value"
                 }),
-                spendLimitTimeframeBaseUnits: z.coerce.number({
-                    required_error: "Spend limit timeframe base units is required",
-                    invalid_type_error: "Spend limit timeframe base units must be a number"
-                }),
-                spendLimitTimeframe: z.coerce.number({
-                    required_error: "Spend limit timeframe is required",
-                    invalid_type_error: "Spend limit timeframe must be a number"
-                })
             });
 
             const { address, spendLimitTransactionBaseUnits, spendLimitTimeframeBaseUnits, spendLimitTimeframe } =

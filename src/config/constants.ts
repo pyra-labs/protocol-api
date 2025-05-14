@@ -1,4 +1,5 @@
 import { BN } from "@quartz-labs/sdk";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 export const BASE_UNITS_PER_USDC = 1_000_000;
 export const JUPITER_SLIPPAGE_BPS = 50;
@@ -17,3 +18,4 @@ export const DEFAULT_CARD_TIMEFRAME = new BN(SECONDS_PER_DAY);
 export const DEFAULT_CARD_TIMEFRAME_RESET = new BN(0);
 
 export const DUST_BUFFER_BASE_UNITS = 100;
+export const MIN_TIME_LOCK_RENT_PAYER_BALANCE = 0.05 * LAMPORTS_PER_SOL;
