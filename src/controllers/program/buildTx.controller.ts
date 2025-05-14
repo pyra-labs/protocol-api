@@ -6,16 +6,14 @@ import { Controller } from '../../types/controller.class.js';
 import { QuartzClient, MarketIndex, QuartzUser, isMarketIndex, TOKENS, MARKET_INDEX_SOL, getTokenProgram, makeCreateAtaIxIfNeeded, BN } from '@quartz-labs/sdk';
 import { SwapMode } from '@jup-ag/api';
 import config from '../../config/config.js';
-import { buildInitAccountTransaction } from './build-tx/initAccount.js';
 import { buildUpgradeAccountTransaction } from './build-tx/upgradeAccount.js';
 import { buildWithdrawTransaction } from './build-tx/withdraw.js';
 import { buildCollateralRepayTransaction } from './build-tx/collateralRepay.js';
 import AdvancedConnection from '@quartz-labs/connection';
 import { z } from "zod";
-import { buildTransaction, validateParams } from '../../utils/helpers.js';
+import { buildTransaction, getNextTimeframeReset, validateParams } from '../../utils/helpers.js';
 import { SpendLimitTimeframe } from '../../types/enums/SpendLimitTimeframe.enum.js';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
-import { getNextTimeframeReset } from './build-tx/increaseSpendLimits.js';
 
 export class BuildTxController extends Controller {
     private connection: AdvancedConnection;
@@ -95,17 +93,51 @@ export class BuildTxController extends Controller {
                     }
                 }, {
                     message: "Wallet address is not a valid Solana public key"
-                }).transform(str => new PublicKey(str))
+                }).transform(str => new PublicKey(str)),
+                spendLimitTransactionBaseUnits: z.string().refine(
+                    (value) => {
+                        const num = Number(value);
+                        return !isNaN(num) && num >= 0;
+                    },
+                    { message: "spendLimitTransactionBaseUnits must be a non-negative number" }
+                ).transform(value => Number(value)),
+                spendLimitTimeframeBaseUnits: z.string().refine(
+                    (value) => {
+                        const num = Number(value);
+                        return !isNaN(num) && num >= 0;
+                    },
+                    { message: "spendLimitTimeframeBaseUnits must be a non-negative number" }
+                ).transform(value => Number(value)),
+                spendLimitTimeframe: z.string().refine(
+                    (value) => {
+                        return Object.values(SpendLimitTimeframe).filter(v => typeof v === 'number').includes(Number(value));
+                    },
+                    { message: "spendLimitTimeframe must be a valid SpendLimitTimeframe" }
+                ).transform(value => Number(value) as SpendLimitTimeframe),
             });
 
-            const { address } = await validateParams(paramsSchema, req);
+            const { address, spendLimitTransactionBaseUnits, spendLimitTimeframeBaseUnits, spendLimitTimeframe } = await validateParams(paramsSchema, req);
+
+            const nextTimeframeResetTimestamp = getNextTimeframeReset(spendLimitTimeframe);
 
             const quartzClient = await this.quartzClientPromise;
-            const serializedTx = await buildInitAccountTransaction(
+
+            const {
+                ixs,
+                lookupTables,
+                signers
+            } = await quartzClient.makeInitQuartzUserIxs(
                 address,
-                this.connection,
-                quartzClient
+                new BN(spendLimitTransactionBaseUnits),
+                new BN(spendLimitTimeframeBaseUnits),
+                new BN(spendLimitTimeframe),
+                new BN(nextTimeframeResetTimestamp)
             );
+
+            const transaction = await buildTransaction(this.connection, ixs, address, lookupTables);
+            transaction.sign(signers);
+
+            const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
 
             res.status(200).json({ transaction: serializedTx });
             return;
