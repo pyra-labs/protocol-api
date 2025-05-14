@@ -147,4 +147,15 @@ export class ProgramDataController extends Controller {
             next(error);
         }
     }
+
+    public currentSlot = async (_: Request, res: Response, next: NextFunction) => {
+        try {
+            const currentSlot = await this.connection.getSlot();
+
+            res.status(200).json(currentSlot);
+            return;
+        } catch (error) {
+            next(error);
+        }
+    }
 }
