@@ -3,7 +3,7 @@ import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
 import { buildAdjustSpendLimitTransaction } from './build-tx/adjustSpendLimit.js';
 import { Controller } from '../../types/controller.class.js';
-import { QuartzClient, MarketIndex, QuartzUser, isMarketIndex, TOKENS, MARKET_INDEX_SOL, getTokenProgram, makeCreateAtaIxIfNeeded, BN } from '@quartz-labs/sdk';
+import { QuartzClient, MarketIndex, QuartzUser, isMarketIndex, TOKENS, MARKET_INDEX_SOL, getTokenProgram, makeCreateAtaIxIfNeeded, BN, getTimeLockRentPayerPublicKey } from '@quartz-labs/sdk';
 import { SwapMode } from '@jup-ag/api';
 import config from '../../config/config.js';
 import { buildUpgradeAccountTransaction } from './build-tx/upgradeAccount.js';
@@ -14,6 +14,7 @@ import { z } from "zod";
 import { buildTransaction, getNextTimeframeReset, validateParams } from '../../utils/helpers.js';
 import { SpendLimitTimeframe } from '../../types/enums/SpendLimitTimeframe.enum.js';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
+import { DEFAULT_CARD_TIMEFRAME, DEFAULT_CARD_TIMEFRAME_LIMIT, DEFAULT_CARD_TIMEFRAME_RESET, DEFAULT_CARD_TRANSACTION_LIMIT, MIN_TIME_LOCK_RENT_PAYER_BALANCE } from '../../config/constants.js';
 
 export class BuildTxController extends Controller {
     private connection: AdvancedConnection;
@@ -646,6 +647,110 @@ export class BuildTxController extends Controller {
                 this.connection,
                 ixs,
                 address,
+                lookupTables
+            );
+
+            transaction.sign(signers);
+            const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
+
+            res.status(200).json({ transaction: serializedTx });
+            return;
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    send = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const paramsSchema = z.object({
+                sender: z.string({
+                    required_error: "Sender address is required",
+                    invalid_type_error: "Sender address must be a string"
+                }).refine((str) => {
+                    try {
+                        new PublicKey(str);
+                        return true;
+                    } catch {
+                        return false;
+                    }
+                }, {
+                    message: "Sender address is not a valid Solana public key"
+                }).transform(str => new PublicKey(str)),
+                destination: z.string().refine(
+                    (value: string) => {
+                        try {
+                            new PublicKey(value);
+                            return true;
+                        } catch {
+                            return false;
+                        }
+                    },
+                    { message: "Destination is not a valid public key" }
+                ).transform(str => new PublicKey(str)),
+                amountBaseUnits: z.coerce.number().refine(
+                    Number.isInteger,
+                    { message: "amountBaseUnits must be an integer" }
+                ),
+                allowLoan: z.boolean(),
+                marketIndex: z.coerce.number().refine(
+                    (value: number) => MarketIndex.includes(value as MarketIndex),
+                    { message: "marketIndex must be a valid market index" }
+                ).transform(val => val as MarketIndex),
+                useMaxAmount: z.boolean().optional().default(false),
+            });
+
+            const {
+                sender,
+                destination,
+                allowLoan,
+                marketIndex,
+                useMaxAmount
+            } = await validateParams(paramsSchema, req);
+
+            let { amountBaseUnits } = await validateParams(paramsSchema, req);
+
+            const quartzClient = await this.quartzClientPromise;
+            let user: QuartzUser;
+            try {
+                user = await quartzClient.getQuartzAccount(sender);
+            } catch {
+                throw new HttpException(400, "User not found");
+            }
+
+            if (useMaxAmount) {
+                const amountBaseUnitsBN = await user.getWithdrawalLimit(marketIndex, !allowLoan);
+                amountBaseUnits = amountBaseUnitsBN.toNumber();
+            }
+
+            const rentPayerBalance = await this.connection.getBalance(getTimeLockRentPayerPublicKey());
+            const isUserPaying = rentPayerBalance < MIN_TIME_LOCK_RENT_PAYER_BALANCE;
+
+            // Create ATA for destination if needed (wSOL is already unwrapped)
+            let oix_createAta: TransactionInstruction[] = [];
+            const mint = TOKENS[marketIndex].mint;
+            if (mint !== TOKENS[MARKET_INDEX_SOL].mint) {
+                const mintTokenProgram = await getTokenProgram(this.connection, mint);
+                const ata = getAssociatedTokenAddressSync(mint, destination, true, mintTokenProgram);
+                oix_createAta = await makeCreateAtaIxIfNeeded(this.connection, ata, destination, mint, mintTokenProgram);
+            }
+
+            const reduceOnly = !allowLoan;
+            const {
+                ixs,
+                lookupTables,
+                signers
+            } = await user.makeInitiateWithdrawIxs(
+                amountBaseUnits,
+                marketIndex,
+                reduceOnly,
+                isUserPaying,
+                destination
+            );
+
+            const transaction = await buildTransaction(
+                this.connection,
+                [...oix_createAta, ...ixs],
+                sender,
                 lookupTables
             );
 
