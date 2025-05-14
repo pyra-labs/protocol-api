@@ -24,22 +24,28 @@ export class ProgramDataController extends Controller {
 
     public getAccountStatus = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const address = req.query.wallet as string;
-            if (!address) {
-                throw new HttpException(400, "Wallet address is required");
-            }
+            const paramsSchema = z.object({
+                address: z.string({
+                    required_error: "Wallet address is required",
+                    invalid_type_error: "Wallet address must be a string"
+                }).refine((str) => {
+                    try {
+                        new PublicKey(str);
+                        return true;
+                    } catch {
+                        return false;
+                    }
+                }, {
+                    message: "Wallet address is not a valid Solana public key"
+                }).transform(str => new PublicKey(str))
+            });
 
-            let pubkey: PublicKey;
-            try {
-                pubkey = new PublicKey(address);
-            } catch {
-                throw new HttpException(400, "Invalid wallet address");
-            }
+            const { address } = await validateParams(paramsSchema, req);
 
             const [hasVaultHistory, isVaultInitialized, requiresUpgrade] = await Promise.all([
-                checkHasVaultHistory(pubkey, this.connection),
-                checkIsVaultInitialized(pubkey, this.connection),
-                checkRequiresUpgrade(pubkey, this.connection)
+                checkHasVaultHistory(address, this.connection),
+                checkIsVaultInitialized(address, this.connection),
+                checkRequiresUpgrade(address, this.connection)
             ]);
 
             if (!isVaultInitialized && hasVaultHistory) {
@@ -65,10 +71,23 @@ export class ProgramDataController extends Controller {
 
     public getSpendLimits = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const address = new PublicKey(req.query.address as string);
-            if (!address) {
-                throw new HttpException(400, "Wallet address is required");
-            }
+            const paramsSchema = z.object({
+                address: z.string({
+                    required_error: "Wallet address is required",
+                    invalid_type_error: "Wallet address must be a string"
+                }).refine((str) => {
+                    try {
+                        new PublicKey(str);
+                        return true;
+                    } catch {
+                        return false;
+                    }
+                }, {
+                    message: "Wallet address is not a valid Solana public key"
+                }).transform(str => new PublicKey(str))
+            });
+
+            const { address } = await validateParams(paramsSchema, req);
 
             const quartzClient = await this.quartzClientPromise;
             const spendLimits = await getSpendLimits(address, this.connection, quartzClient);
@@ -119,7 +138,7 @@ export class ProgramDataController extends Controller {
                     balances[marketIndex] = Math.max(availableBalance, 0);
                     continue;
                 }
-    
+
                 const mint = TOKENS[marketIndex].mint;
                 const tokenProgram = await getTokenProgram(this.connection, mint);
                 const ata = getAssociatedTokenAddressSync(mint, address, true, tokenProgram);
