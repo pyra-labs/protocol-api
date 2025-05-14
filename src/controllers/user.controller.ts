@@ -1,37 +1,43 @@
 import config from "../config/config.js";
 import type { NextFunction, Request, Response } from "express";
-import { bnToDecimal } from "../utils/helpers.js";
+import { bnToDecimal, validateParams } from "../utils/helpers.js";
 import { PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
 import type { SpendLimitsOrderAccountResponse, WithdrawOrderAccountResponse } from "../types/orders.interface.js";
 import AdvancedConnection from "@quartz-labs/connection";
+import { z } from "zod";
 
-export class UserController extends Controller{
+export class UserController extends Controller {
     private quartzClientPromise: Promise<QuartzClient>;
     private connection: AdvancedConnection;
     private rateCache: Record<string, { depositRate: number; borrowRate: number; ltv: number; timestamp: number }> = {};
     private RATE_CACHE_DURATION = 60_000;
+    
+    private readonly addressSchema = z.string({
+        required_error: "Wallet address is required",
+        invalid_type_error: "Wallet address must be a string"
+    }).refine((str) => {
+        try {
+            new PublicKey(str);
+            return true;
+        } catch {
+            return false;
+        }
+    }, {
+        message: "Wallet address is not a valid Solana public key"
+    }).transform(str => new PublicKey(str));
 
     constructor() {
         super();
         this.connection = new AdvancedConnection(config.RPC_URLS);
-        this.quartzClientPromise = QuartzClient.fetchClient({connection: this.connection});
-    }
-
-    private validateAddress(address: string): PublicKey {
-        try {
-            const pubkey = new PublicKey(address);
-            return pubkey;
-        } catch {
-            throw new HttpException(400, "Invalid address");
-        }
+        this.quartzClientPromise = QuartzClient.fetchClient({ connection: this.connection });
     }
 
     private async getQuartzUser(pubkey: PublicKey): Promise<QuartzUser> {
         try {
-            const quartzClient = await this.quartzClientPromise;    
+            const quartzClient = await this.quartzClientPromise;
             return await retryWithBackoff(
                 () => quartzClient.getQuartzAccount(pubkey),
                 2
@@ -41,27 +47,42 @@ export class UserController extends Controller{
         }
     }
 
-    private validateMarketIndices(marketIndicesParam: string) {
-        if (!marketIndicesParam) {
-            throw new HttpException(400, "Market indices are required");
-        }
+    private validateMarketIndices(marketIndicesParam: string): MarketIndex[] {
+        const marketIndicesSchema = z.string({
+            required_error: "Market indices are required",
+            invalid_type_error: "Market indices must be a string"
+        })
+            .transform((str) => {
+                const decoded = decodeURIComponent(str);
+                return decoded.split(',').map(Number);
+            })
+            .refine(
+                (indices) => indices.length > 0,
+                "Invalid market index"
+            )
+            .refine(
+                (indices) => indices.every(index => !Number.isNaN(index)),
+                "Invalid market index format"
+            )
+            .refine(
+                (indices) => indices.every(index => MarketIndex.includes(index as any)),
+                "Unsupported market index"
+            )
+            .transform((indices) => indices as MarketIndex[]);
 
-        const decodedMarketIndices = decodeURIComponent(marketIndicesParam);
-        const marketIndices = decodedMarketIndices.split(',').map(Number).filter(n => !Number.isNaN(n));
-        if (marketIndices.length === 0) {
-            throw new HttpException(400, "Invalid market index");
+        try {
+            return marketIndicesSchema.parse(marketIndicesParam);
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                throw new HttpException(400, error.errors[0]?.message ?? "Invalid market indices");
+            }
+            throw error;
         }
-
-        if (marketIndices.some(index => !MarketIndex.includes(index as any))) {
-            throw new HttpException(400, "Unsupported market index");
-        }
-
-        return marketIndices as MarketIndex[];
     }
 
     public getRate = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const quartzClient = await this.quartzClientPromise;    
+            const quartzClient = await this.quartzClientPromise;
 
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
 
@@ -89,7 +110,7 @@ export class UserController extends Controller{
                     }
 
                     const ltv = await quartzClient.getCollateralWeight(index);
-                
+
                     // Update cache
                     this.rateCache[index] = {
                         depositRate: bnToDecimal(depositRateBN, 6),
@@ -98,7 +119,7 @@ export class UserController extends Controller{
                         timestamp: now
                     };
                 });
-    
+
                 await Promise.all(promises);
             }
 
@@ -110,13 +131,13 @@ export class UserController extends Controller{
                         ltv: this.rateCache[index]?.ltv
                     }
                 }
-            ), {} as Record<
-                MarketIndex, 
-                { 
-                    depositRate: number | undefined; 
-                    borrowRate: number | undefined; 
-                    ltv: number | undefined 
-                }>
+                ), {} as Record<
+                    MarketIndex,
+                    {
+                        depositRate: number | undefined;
+                        borrowRate: number | undefined;
+                        ltv: number | undefined
+                    }>
             );
 
             res.status(200).json(rates);
@@ -128,7 +149,13 @@ export class UserController extends Controller{
     public getBalance = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
-            const address = this.validateAddress(req.query.address as string);
+
+            const paramsSchema = z.object({
+                address: this.addressSchema
+            });
+
+            const { address } = await validateParams(paramsSchema, req);
+
             const user = await this.getQuartzUser(address);
 
             const balancesBN = await retryWithBackoff(
@@ -136,7 +163,7 @@ export class UserController extends Controller{
                 3
             );
 
-            const balances = Object.entries(balancesBN).reduce((acc, [index, balance]) => {     
+            const balances = Object.entries(balancesBN).reduce((acc, [index, balance]) => {
                 return Object.assign(acc, {
                     [index]: balance.toNumber()
                 });
@@ -151,7 +178,13 @@ export class UserController extends Controller{
     public getWithdrawLimit = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
-            const address = this.validateAddress(req.query.address as string);
+
+            const paramsSchema = z.object({
+                address: this.addressSchema
+            });
+
+            const { address } = await validateParams(paramsSchema, req);
+
             const user = await this.getQuartzUser(address);
 
             const withdrawLimitsBN = await retryWithBackoff(
@@ -174,7 +207,13 @@ export class UserController extends Controller{
     public getBorrowLimit = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const marketIndices = this.validateMarketIndices(req.query.marketIndices as string);
-            const address = this.validateAddress(req.query.address as string);
+
+            const paramsSchema = z.object({
+                address: this.addressSchema
+            });
+
+            const { address } = await validateParams(paramsSchema, req);
+
             const user = await this.getQuartzUser(address);
 
             const borrowLimitsBN = await retryWithBackoff(
@@ -196,7 +235,11 @@ export class UserController extends Controller{
 
     public getHealth = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const address = this.validateAddress(req.query.address as string);
+            const paramsSchema = z.object({
+                address: this.addressSchema
+            });
+
+            const { address } = await validateParams(paramsSchema, req);
             const user = await this.getQuartzUser(address);
             const health = user.getHealth();
             res.status(200).json(health);
@@ -207,7 +250,12 @@ export class UserController extends Controller{
 
     public getSpendableBalance = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const address = this.validateAddress(req.query.address as string);
+            const paramsSchema = z.object({
+                address: this.addressSchema
+            });
+
+            const { address } = await validateParams(paramsSchema, req);
+
             const user = await this.getQuartzUser(address);
             const getAvailableCreditUsdcBaseUnits = await user
                 .getAvailableCreditUsdcBaseUnits();
@@ -220,13 +268,18 @@ export class UserController extends Controller{
 
     public getOpenOrders = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const address = this.validateAddress(req.query.address as string);
+            const paramsSchema = z.object({
+                address: this.addressSchema
+            });
+
+            const { address } = await validateParams(paramsSchema, req);
+
             try {
                 await this.getQuartzUser(address);
             } catch {
                 throw new HttpException(400, "Quartz account not found");
             }
-            
+
             const quartzClient = await this.quartzClientPromise;
             const [
                 withdrawOrders,
