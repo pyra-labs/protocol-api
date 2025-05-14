@@ -4,8 +4,8 @@ import { HttpException } from '../../utils/errors.js';
 import { AccountStatus } from '../../types/enums/AccountStatus.enum.js';
 import { Controller } from '../../types/controller.class.js';
 import config from '../../config/config.js';
-import { getMarketIndicesRecord, getTokenAccountBalance, getTokenProgram, MARKET_INDEX_SOL, MarketIndex, QuartzClient, TOKENS } from '@quartz-labs/sdk';
-import { getSpendLimits } from './program-data/spendLimits.js';
+import { BN, getMarketIndicesRecord, getTokenAccountBalance, getTokenProgram, MARKET_INDEX_SOL, MarketIndex, QuartzClient, QuartzUser, TOKENS } from '@quartz-labs/sdk';
+import { getRemainingTimeframeLimit } from './program-data/spendLimits.js';
 import AdvancedConnection from '@quartz-labs/connection';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { z } from 'zod';
@@ -86,9 +86,24 @@ export class ProgramDataController extends Controller {
             const { address } = await validateParams(paramsSchema, req);
 
             const quartzClient = await this.quartzClientPromise;
-            const spendLimits = await getSpendLimits(address, this.connection, quartzClient);
 
-            res.status(200).json(spendLimits);
+            let user: QuartzUser;
+            try {
+                user = await quartzClient.getQuartzAccount(address);
+            } catch {
+                throw new HttpException(400, "User not found");
+            }
+
+            const currentSlot = await this.connection.getSlot();
+
+            const spendLimitTImeframeRemaining = getRemainingTimeframeLimit(user, new BN(currentSlot));
+
+            res.status(200).json({
+                timeframe: user.timeframeInSeconds.toNumber(),
+                spendLimitTransactionBaseUnits: user.spendLimitPerTransaction.toNumber(),
+                spendLimitTimeframeBaseUnits: user.spendLimitPerTimeframe.toNumber(),
+                spendLimitTimeframeRemainingBaseUnits: spendLimitTImeframeRemaining.toNumber()
+            });
             return;
         } catch (error) {
             next(error);
