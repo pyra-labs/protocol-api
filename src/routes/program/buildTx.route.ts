@@ -15,5 +15,6 @@ export class BuildTxRoute extends Route {
         this.router.get("/upgrade-account", this.controller.upgradeAccount);
         this.router.get("/withdraw", this.controller.withdraw);
         this.router.get("/cancel-withdraw", this.controller.cancelWithdraw);
+        this.router.get("/fulfil-spend-limit", this.controller.fulfilSpendLimit);
     }
 }
