@@ -13,3 +13,5 @@ const app = new App(
   config.ROUTE_PREFIX
 );
 app.listen();
+
+console.log("foo")
