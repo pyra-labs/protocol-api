@@ -1,10 +1,10 @@
 import type { NextFunction, Request, Response } from 'express';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
 import { AccountStatus } from '../../types/enums/AccountStatus.enum.js';
 import { Controller } from '../../types/controller.class.js';
 import config from '../../config/config.js';
-import { getMarketIndicesRecord, getTokenProgram, MARKET_INDEX_SOL, MarketIndex, QuartzClient, TOKENS } from '@quartz-labs/sdk';
+import { getMarketIndicesRecord, getTokenAccountBalance, getTokenProgram, MARKET_INDEX_SOL, MarketIndex, QuartzClient, TOKENS } from '@quartz-labs/sdk';
 import { checkHasVaultHistory, checkIsVaultInitialized, checkRequiresUpgrade } from './program-data/accountStatus.js';
 import { getSpendLimits } from './program-data/spendLimits.js';
 import AdvancedConnection from '@quartz-labs/connection';
@@ -105,13 +105,25 @@ export class ProgramDataController extends Controller {
                     }, {
                         message: "Quartz user does not exist"
                     })
+                    .transform((key) => new PublicKey(key))
             });
 
             const { address } = await validateParams(paramsSchema, req);
 
             const balances = getMarketIndicesRecord<number>(0);
             for (const marketIndex of MarketIndex) {
-                balances[marketIndex] = await getBalance(this.connection, new PublicKey(address), marketIndex);
+                if (marketIndex === MARKET_INDEX_SOL) {
+                    const wallet_rent = await this.connection.getMinimumBalanceForRentExemption(0);
+                    const balance = await this.connection.getBalance(address);
+                    const availableBalance = balance - wallet_rent;
+                    balances[marketIndex] = Math.max(availableBalance, 0);
+                    continue;
+                }
+    
+                const mint = TOKENS[marketIndex].mint;
+                const tokenProgram = await getTokenProgram(this.connection, mint);
+                const ata = getAssociatedTokenAddressSync(mint, address, true, tokenProgram);
+                balances[marketIndex] = await getTokenAccountBalance(this.connection, ata);
             }
 
             res.status(200).json(balances);
@@ -119,32 +131,5 @@ export class ProgramDataController extends Controller {
         } catch (error) {
             next(error);
         }
-    }
-}
-
-async function getBalance(
-    connection: Connection,
-    address: PublicKey,
-    marketIndex: MarketIndex
-): Promise<number> {
-    if (marketIndex === MARKET_INDEX_SOL) {
-        const wallet_rent = await connection.getMinimumBalanceForRentExemption(0);
-        const balance = await connection.getBalance(address);
-        const availableBalance = balance - wallet_rent;
-        return Math.max(availableBalance, 0);
-    }
-
-    try {
-        const mint = TOKENS[marketIndex].mint;
-        const tokenProgram = await getTokenProgram(connection, mint);
-        const ata = getAssociatedTokenAddressSync(mint, address, true, tokenProgram);
-        const balance = await connection.getTokenAccountBalance(ata, "confirmed");
-        const balanceNum = Number(balance.value.amount);
-        if (Number.isNaN(balanceNum)) throw new Error();
-
-        return balanceNum;
-    } catch {
-        // ATA not found, return 0
-        return 0;
     }
 }
