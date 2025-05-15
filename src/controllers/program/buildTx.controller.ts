@@ -25,7 +25,7 @@ export class BuildTxController extends Controller {
         this.quartzClientPromise = QuartzClient.fetchClient({ connection: this.connection });
     }
 
-    public adjustSpendLimit = async (req: Request, res: Response, next: NextFunction) => {
+    adjustSpendLimit = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const quartzClient = await this.quartzClientPromise;
 
@@ -78,7 +78,7 @@ export class BuildTxController extends Controller {
         }
     }
 
-    async initAccount(req: Request, res: Response, next: NextFunction) {
+    initAccount = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
                 address: z.string({
@@ -147,7 +147,7 @@ export class BuildTxController extends Controller {
         }
     }
 
-    async collateralRepay(req: Request, res: Response, next: NextFunction) {
+    collateralRepay = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const quartzClient = await this.quartzClientPromise;
 
@@ -207,7 +207,7 @@ export class BuildTxController extends Controller {
         }
     }
 
-    async upgradeAccount(req: Request, res: Response, next: NextFunction) {
+    upgradeAccount = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
                 address: z.string({
