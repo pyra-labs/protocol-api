@@ -1,28 +1,6 @@
-import type { Connection, PublicKey } from '@solana/web3.js';
-import { type QuartzUser, BN, type QuartzClient } from "@quartz-labs/sdk";
-import { HttpException } from '../../../utils/errors.js';
+import { type QuartzUser, BN } from "@quartz-labs/sdk";
 
-export const getSpendLimits = async (address: PublicKey, connection: Connection, quartzClient: QuartzClient) => {
-    let user: QuartzUser;
-    try {
-        user = await quartzClient.getQuartzAccount(address);
-    } catch {
-        throw new HttpException(400, "User not found");
-    }
-
-    const currentSlot = await connection.getSlot();
-
-    const spendLimitTImeframeRemaining = getRemainingTimeframeLimit(user, new BN(currentSlot));
-
-    return {
-        timeframe: user.timeframeInSeconds.toNumber(),
-        spendLimitTransactionBaseUnits: user.spendLimitPerTransaction.toNumber(),
-        spendLimitTimeframeBaseUnits: user.spendLimitPerTimeframe.toNumber(),
-        spendLimitTimeframeRemainingBaseUnits: spendLimitTImeframeRemaining.toNumber()
-    };
-}
-
-function getRemainingTimeframeLimit(
+export function getRemainingTimeframeLimit(
     quartzUser: QuartzUser,
     currentSlot: BN
 ) {

@@ -1,12 +1,13 @@
 import type { NextFunction, Request, Response } from 'express';
-import { TransactionExpiredBlockheightExceededError, VersionedTransaction } from '@solana/web3.js';
+import { SendTransactionError, TransactionExpiredBlockheightExceededError, VersionedTransaction } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
 import { Controller } from '../../types/controller.class.js';
-import { retryWithBackoff } from '@quartz-labs/sdk';
+import { getTimeLockRentPayerPublicKey, retryWithBackoff } from '@quartz-labs/sdk';
 import { z } from 'zod';
 import config from '../../config/config.js';
 import AdvancedConnection from '@quartz-labs/connection';
 import { validateParams } from '../../utils/helpers.js';
+import { MIN_TIME_LOCK_RENT_PAYER_BALANCE } from '../../config/constants.js';
 
 const transactionSchema = z.object({
     transaction: z.string()
@@ -106,6 +107,25 @@ export class TxController extends Controller {
 
             console.log("Signature", signature);
             res.status(200).json({ signature });
+        } catch (error) {
+            console.error(error);
+            if (error instanceof SendTransactionError) {
+                const logs = await error.getLogs(this.connection)
+                    .catch(() => [error.message]);
+                next(new Error("Transaction failed, error logs: " + logs));
+                return;
+            }
+            next(error);
+        }
+    }
+
+    public isUserPayingOrderRent = async (_: Request, res: Response, next: NextFunction): Promise<void> => {
+
+        try {
+            const rentPayerBalance = await this.connection.getBalance(getTimeLockRentPayerPublicKey());
+            const isUserPaying = rentPayerBalance < MIN_TIME_LOCK_RENT_PAYER_BALANCE;
+
+            res.status(200).json(isUserPaying);
         } catch (error) {
             console.error(error);
             next(error);

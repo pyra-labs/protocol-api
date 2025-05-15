@@ -11,5 +11,6 @@ export class TxRoute extends Route {
     protected initializeRoutes() {
         this.router.get("/confirm", this.controller.confirmTx);
         this.router.post("/send", this.controller.sendTransaction);
+        this.router.get("/is-user-paying-order-rent", this.controller.isUserPayingOrderRent);
     }
 }

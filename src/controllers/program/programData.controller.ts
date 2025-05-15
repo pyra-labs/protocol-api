@@ -4,13 +4,13 @@ import { HttpException } from '../../utils/errors.js';
 import { AccountStatus } from '../../types/enums/AccountStatus.enum.js';
 import { Controller } from '../../types/controller.class.js';
 import config from '../../config/config.js';
-import { getMarketIndicesRecord, getTokenAccountBalance, getTokenProgram, MARKET_INDEX_SOL, MarketIndex, QuartzClient, TOKENS } from '@quartz-labs/sdk';
-import { checkHasVaultHistory, checkIsVaultInitialized, checkRequiresUpgrade } from './program-data/accountStatus.js';
-import { getSpendLimits } from './program-data/spendLimits.js';
+import { BN, getMarketIndicesRecord, getTokenAccountBalance, getTokenProgram, MARKET_INDEX_SOL, MarketIndex, QuartzClient, QuartzUser, TOKENS } from '@quartz-labs/sdk';
+import { getRemainingTimeframeLimit } from './program-data/spendLimits.js';
 import AdvancedConnection from '@quartz-labs/connection';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { z } from 'zod';
 import { validateParams } from '../../utils/helpers.js';
+import { checkHasVaultHistory, checkIsVaultInitialized, checkRequiresUpgrade } from './program-data/accountStatus.js';
 
 export class ProgramDataController extends Controller {
     private connection: AdvancedConnection;
@@ -43,17 +43,15 @@ export class ProgramDataController extends Controller {
             const { address } = await validateParams(paramsSchema, req);
 
             const [hasVaultHistory, isVaultInitialized, requiresUpgrade] = await Promise.all([
-                checkHasVaultHistory(address, this.connection),
-                checkIsVaultInitialized(address, this.connection),
-                checkRequiresUpgrade(address, this.connection)
+                checkHasVaultHistory(this.connection, address),
+                checkIsVaultInitialized(this.connection, address),
+                checkRequiresUpgrade(this.connection, address)
             ]);
 
             if (!isVaultInitialized && hasVaultHistory) {
                 res.status(200).json({ status: AccountStatus.CLOSED });
                 return;
-            }
-
-            if (isVaultInitialized) {
+            } else if (isVaultInitialized) {
                 if (requiresUpgrade) {
                     res.status(200).json({ status: AccountStatus.UPGRADE_REQUIRED });
                     return;
@@ -61,9 +59,7 @@ export class ProgramDataController extends Controller {
 
                 res.status(200).json({ status: AccountStatus.INITIALIZED });
                 return;
-            }
-
-            res.status(200).json({ status: AccountStatus.NOT_INITIALIZED });
+            } else res.status(200).json({ status: AccountStatus.NOT_INITIALIZED });
         } catch (error) {
             next(error);
         }
@@ -90,9 +86,24 @@ export class ProgramDataController extends Controller {
             const { address } = await validateParams(paramsSchema, req);
 
             const quartzClient = await this.quartzClientPromise;
-            const spendLimits = await getSpendLimits(address, this.connection, quartzClient);
 
-            res.status(200).json(spendLimits);
+            let user: QuartzUser;
+            try {
+                user = await quartzClient.getQuartzAccount(address);
+            } catch {
+                throw new HttpException(400, "User not found");
+            }
+
+            const currentSlot = await this.connection.getSlot();
+
+            const spendLimitTImeframeRemaining = getRemainingTimeframeLimit(user, new BN(currentSlot));
+
+            res.status(200).json({
+                timeframe: user.timeframeInSeconds.toNumber(),
+                spendLimitTransactionBaseUnits: user.spendLimitPerTransaction.toNumber(),
+                spendLimitTimeframeBaseUnits: user.spendLimitPerTimeframe.toNumber(),
+                spendLimitTimeframeRemainingBaseUnits: spendLimitTImeframeRemaining.toNumber()
+            });
             return;
         } catch (error) {
             next(error);
@@ -146,6 +157,17 @@ export class ProgramDataController extends Controller {
             }
 
             res.status(200).json(balances);
+            return;
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    public currentSlot = async (_: Request, res: Response, next: NextFunction) => {
+        try {
+            const currentSlot = await this.connection.getSlot();
+
+            res.status(200).json(currentSlot);
             return;
         } catch (error) {
             next(error);

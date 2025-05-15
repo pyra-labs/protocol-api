@@ -11,9 +11,10 @@ import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { z } from "zod";
 import { HttpException } from "./errors.js";
 import type { Request } from "express";
+import { SpendLimitTimeframe } from "../types/enums/SpendLimitTimeframe.enum.js";
 
 export async function validateParams<T extends z.ZodSchema>(
-    schema: T, 
+    schema: T,
     req: Request
 ): Promise<z.infer<T>> {
     try {
@@ -42,7 +43,7 @@ export const getGoogleAccessToken = async () => {
     });
 
     const signedJwt = await signJwt(jwtToken, config.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"));
-    
+
     const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: {
@@ -61,7 +62,7 @@ export const getGoogleAccessToken = async () => {
 const signJwt = async (token: string, privateKey: string): Promise<string> => {
     const encoder = new TextEncoder();
     const header = { alg: 'RS256', typ: 'JWT' };
-    
+
     const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
     const encodedPayload = Buffer.from(token).toString('base64url');
     const signInput = `${encodedHeader}.${encodedPayload}`;
@@ -103,7 +104,7 @@ export const getTimestamp = () => {
 
 export async function buildTransaction(
     connection: Connection,
-    instructions: TransactionInstruction[], 
+    instructions: TransactionInstruction[],
     address: PublicKey,
     lookupTables: AddressLookupTableAccount[] = []
 ): Promise<VersionedTransaction> {
@@ -154,12 +155,12 @@ export function getWsolMint() {
 }
 
 export async function getJupiterSwapQuote(
-    inputMint: PublicKey, 
-    outputMint: PublicKey, 
+    inputMint: PublicKey,
+    outputMint: PublicKey,
     amount: number,
     slippageBps: number
 ) {
-    const quoteEndpoint = 
+    const quoteEndpoint =
         `https://quote-api.jup.ag/v6/quote?inputMint=${inputMint.toBase58()}&outputMint=${outputMint.toBase58()}&amount=${amount}&slippageBps=${slippageBps}&swapMode=ExactOut&onlyDirectRoutes=true`;
     const response = await fetch(quoteEndpoint);
     const body: any = await response.json();
@@ -181,18 +182,18 @@ export function baseUnitToDecimal(baseUnits: number, marketIndex: MarketIndex): 
     return baseUnits / (10 ** token.decimalPrecision.toNumber());
 }
 
-export async function fetchAndParse(
-    url: string, 
-    req?: RequestInit, 
-    retries = 0
-): Promise<any> {
+export async function fetchAndParse<T>(
+    url: string,
+    req?: RequestInit | undefined,
+    retries: number = 0
+): Promise<T> {
     const response = await retryWithBackoff(
         async () => fetch(url, req),
         retries
     );
-    
+
     if (!response.ok) {
-        let body: any;
+        let body;
         try {
             body = await response.json();
         } catch {
@@ -207,8 +208,42 @@ export async function fetchAndParse(
 
     try {
         const body = await response.json();
-        return body;
+        return body as T;
     } catch {
-        return response;
+        return response as T;
     }
+}
+
+export function getNextTimeframeReset(timeframe: SpendLimitTimeframe): number {
+    const reset = new Date();
+
+    switch (timeframe) {
+        case SpendLimitTimeframe.DAY:
+            reset.setUTCDate(reset.getUTCDate() + 1);
+            reset.setUTCHours(0, 0, 0, 0);
+            break;
+
+        case SpendLimitTimeframe.WEEK:
+            reset.setUTCDate(reset.getUTCDate() + ((8 - reset.getUTCDay()) % 7 || 7)); // Get next Monday
+            reset.setUTCHours(0, 0, 0, 0);
+            break;
+
+        case SpendLimitTimeframe.MONTH:
+            reset.setUTCMonth(reset.getUTCMonth() + 1); // Automatically handles rollover to next year
+            reset.setUTCDate(1);
+            reset.setUTCHours(0, 0, 0, 0);
+            break;
+
+        case SpendLimitTimeframe.YEAR:
+            reset.setUTCFullYear(reset.getUTCFullYear() + 1);
+            reset.setUTCMonth(0);
+            reset.setUTCDate(1);
+            reset.setUTCHours(0, 0, 0, 0);
+            break;
+
+        default:
+            throw new Error("Invalid spend limit timeframe");
+    }
+
+    return Math.trunc(reset.getTime() / 1000); // Convert milliseconds to seconds
 }

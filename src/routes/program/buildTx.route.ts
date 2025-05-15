@@ -9,10 +9,16 @@ export class BuildTxRoute extends Route {
     }
 
     protected initializeRoutes() {
-        this.router.get("/spend-limit", this.controller.adjustSpendLimit);
+        this.router.get("/adjust-spend-limit", this.controller.adjustSpendLimit);
         this.router.get("/init-account", this.controller.initAccount);
         this.router.get("/collateral-repay", this.controller.collateralRepay);
         this.router.get("/upgrade-account", this.controller.upgradeAccount);
         this.router.get("/withdraw", this.controller.withdraw);
+        this.router.get("/cancel-withdraw", this.controller.cancelWithdraw);
+        this.router.get("/fulfil-withdraw", this.controller.fulfilWithdraw);
+        this.router.get("/fulfil-spend-limit", this.controller.fulfilSpendLimit);
+        this.router.get("/increase-spend-limits", this.controller.increaseSpendLimits);
+        this.router.get("/rescue", this.controller.rescue);
+        this.router.get("/send", this.controller.send);
     }
 }

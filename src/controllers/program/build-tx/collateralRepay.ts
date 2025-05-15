@@ -1,8 +1,8 @@
-import { AddressLookupTableAccount, PublicKey, TransactionInstruction, type Connection, type Keypair, type VersionedTransaction } from '@solana/web3.js';
+import { AddressLookupTableAccount, PublicKey, TransactionInstruction, TransactionMessage, VersionedTransaction, type Connection, type Keypair } from '@solana/web3.js';
 import { baseUnitToDecimal, type MarketIndex, QuartzClient, TOKENS, DummyWallet, type QuartzUser, getTokenProgram, makeCreateAtaIxIfNeeded, getComputeUnitPriceIx } from '@quartz-labs/sdk';
 import { getConfig as getMarginfiConfig, MarginfiClient } from '@mrgnlabs/marginfi-client-v2';
-import type { SwapMode, QuoteResponse } from '@jup-ag/api';
-import { createCloseAccountInstruction, getAssociatedTokenAddress } from '@solana/spl-token';
+import { SwapMode, type QuoteResponse } from '@jup-ag/api';
+import { createCloseAccountInstruction, getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { HttpException } from '../../../utils/errors.js';
 import { fetchAndParse } from '../../../utils/helpers.js';
 import { JUPITER_SLIPPAGE_BPS } from '../../../config/constants.js';
@@ -19,8 +19,8 @@ export const buildCollateralRepayTransaction = async (
     quartzClient?: QuartzClient,
     useMaxAmount = false
 ): Promise<string> => {
-    const client = quartzClient || await QuartzClient.fetchClient({connection});
-    
+    const client = quartzClient || await QuartzClient.fetchClient({ connection });
+
     let user: QuartzUser;
     try {
         user = await client.getQuartzAccount(address);
@@ -28,9 +28,8 @@ export const buildCollateralRepayTransaction = async (
         throw new HttpException(400, "User not found");
     }
 
-    let finalAmountSwapBaseUnits = amountSwapBaseUnits;
     if (useMaxAmount) {
-        finalAmountSwapBaseUnits = await user.getTokenBalance(marketIndexLoan).then(Number).then(Math.abs);
+        amountSwapBaseUnits = await user.getTokenBalance(marketIndexLoan).then(Number).then(Math.abs);
     }
 
     const {
@@ -40,7 +39,7 @@ export const buildCollateralRepayTransaction = async (
     } = await makeCollateralRepayIxs(
         connection,
         flashLoanCaller.publicKey,
-        finalAmountSwapBaseUnits,
+        amountSwapBaseUnits,
         marketIndexLoan,
         marketIndexCollateral,
         user,
@@ -49,18 +48,19 @@ export const buildCollateralRepayTransaction = async (
 
     const transaction = await buildFlashLoanTransaction(
         connection,
+        address,
         flashLoanCaller,
         flashLoanAmountBaseUnits,
         marketIndexCollateral,
         ixs,
         lookupTables
     );
-    
+
     return Buffer.from(transaction.serialize()).toString("base64");
 }
 
 async function makeCollateralRepayIxs(
-    connection: Connection,
+    connection: AdvancedConnection,
     caller: PublicKey,
     amountSwapBaseUnits: number,
     marketIndexLoan: MarketIndex,
@@ -77,7 +77,7 @@ async function makeCollateralRepayIxs(
 
     const jupiterQuoteEndpoint
         = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${mintCollateral.toBase58()}&outputMint=${mintLoan.toBase58()}&amount=${amountSwapBaseUnits}&slippageBps=${JUPITER_SLIPPAGE_BPS}&swapMode=${swapMode}&onlyDirectRoutes=true`;
-    const jupiterQuote: QuoteResponse = await fetchAndParse(jupiterQuoteEndpoint);
+    const jupiterQuote = await fetchAndParse<QuoteResponse>(jupiterQuoteEndpoint);
     const collateralRequiredForSwap = Math.ceil(Number(jupiterQuote.inAmount) * (1 + (JUPITER_SLIPPAGE_BPS / 10_000)));
 
     const {
@@ -85,9 +85,9 @@ async function makeCollateralRepayIxs(
         lookupTables: jupiterLookupTables
     } = await makeJupiterIx(connection, jupiterQuote, caller);
 
-    const { 
-        ixs, 
-        lookupTables: quartzLookupTables 
+    const {
+        ixs,
+        lookupTables: quartzLookupTables
     } = await user.makeCollateralRepayIxs(
         caller,
         marketIndexLoan,
@@ -104,7 +104,7 @@ async function makeCollateralRepayIxs(
 }
 
 async function makeJupiterIx(
-    connection: Connection,
+    connection: AdvancedConnection,
     jupiterQuote: QuoteResponse,
     address: PublicKey
 ): Promise<{
@@ -122,8 +122,9 @@ async function makeJupiterIx(
                 userPublicKey: address.toBase58(),
             })
         })
+        // biome-ignore lint: Allow any for Jupiter API response
     ).json() as any;
-    
+
     if (instructions.error) {
         throw new Error(`Failed to get swap instructions: ${instructions.error}`);
     }
@@ -133,9 +134,11 @@ async function makeJupiterIx(
         addressLookupTableAddresses
     } = instructions;
 
+    // biome-ignore lint: Allow any for Jupiter API response
     const deserializeInstruction = (instruction: any) => {
         return new TransactionInstruction({
             programId: new PublicKey(instruction.programId),
+            // biome-ignore lint: Allow any for Jupiter API response
             keys: instruction.accounts.map((key: any) => ({
                 pubkey: new PublicKey(key.pubkey),
                 isSigner: key.isSigner,
@@ -144,29 +147,29 @@ async function makeJupiterIx(
             data: Buffer.from(instruction.data, "base64"),
         });
     };
-    
+
     const getAddressLookupTableAccounts = async (
         keys: string[]
     ): Promise<AddressLookupTableAccount[]> => {
         const addressLookupTableAccountInfos =
-        await connection.getMultipleAccountsInfo(
-            keys.map((key) => new PublicKey(key))
-        );
-    
+            await connection.getMultipleAccountsInfo(
+                keys.map((key) => new PublicKey(key))
+            );
+
         return addressLookupTableAccountInfos.reduce((acc, accountInfo, index) => {
             const addressLookupTableAddress = keys[index];
             if (accountInfo && addressLookupTableAddress) {
                 const addressLookupTableAccount = new AddressLookupTableAccount({
-                key: new PublicKey(addressLookupTableAddress),
-                state: AddressLookupTableAccount.deserialize(accountInfo.data),
+                    key: new PublicKey(addressLookupTableAddress),
+                    state: AddressLookupTableAccount.deserialize(accountInfo.data),
                 });
                 acc.push(addressLookupTableAccount);
             }
-        
+
             return acc;
         }, new Array<AddressLookupTableAccount>());
     };
-    
+
     const addressLookupTableAccounts = await getAddressLookupTableAccounts(addressLookupTableAddresses);
 
 
@@ -177,11 +180,12 @@ async function makeJupiterIx(
 }
 
 async function buildFlashLoanTransaction(
-    connection: Connection,
+    connection: AdvancedConnection,
+    owner: PublicKey,
     caller: Keypair,
     flashLoanAmountBaseUnits: number,
     flashLoanMarketIndex: MarketIndex,
-    instructions: TransactionInstruction[], 
+    instructions: TransactionInstruction[],
     lookupTables: AddressLookupTableAccount[] = []
 ): Promise<VersionedTransaction> {
     const amountLoanDecimal = baseUnitToDecimal(flashLoanAmountBaseUnits, flashLoanMarketIndex);
@@ -189,20 +193,20 @@ async function buildFlashLoanTransaction(
     // Get Marginfi account & bank
     const wallet = new DummyWallet(caller.publicKey);
     const marginfiClient = await MarginfiClient.fetch(getMarginfiConfig(), wallet, connection);
-    const [ marginfiAccount ] = await marginfiClient.getMarginfiAccountsForAuthority(caller.publicKey);
+    const [marginfiAccount] = await marginfiClient.getMarginfiAccountsForAuthority(caller.publicKey);
     if (marginfiAccount === undefined) throw new Error("Could not find Flash Loan MarginFi account");
     if (marginfiAccount.isDisabled) throw new Error("Flash Loan MarginFi account is disabled");
 
     const loanBank = marginfiClient.getBankByMint(TOKENS[flashLoanMarketIndex].mint);
     if (loanBank === null) throw new Error("Could not find Flash Loan MarginFi bank");
-    
+
     // Set compute unit price
     const ix_computePrice = await getComputeUnitPriceIx(connection, instructions);
 
     // Make ATA instructions (closing ATA at the end if wSol is used)
     const mintLoan = TOKENS[flashLoanMarketIndex].mint;
     const mintLoanTokenProgram = await getTokenProgram(connection, mintLoan);
-    const walletAtaLoan = await getAssociatedTokenAddress(mintLoan, caller.publicKey, false, mintLoanTokenProgram);
+    const walletAtaLoan = getAssociatedTokenAddressSync(mintLoan, caller.publicKey, true, mintLoanTokenProgram);
     const oix_createAtaLoan = await makeCreateAtaIxIfNeeded(connection, walletAtaLoan, caller.publicKey, mintLoan, mintLoanTokenProgram);
 
     const oix_closeWSolAta: TransactionInstruction[] = [];
@@ -227,19 +231,33 @@ async function buildFlashLoanTransaction(
         wrapAndUnwrapSol: false
     });
 
-    const flashloanTx = await marginfiAccount.buildFlashLoanTx({
-        ixs: [
-            ix_computePrice, 
-            ...oix_createAtaLoan, 
-            ...ix_borrow, 
-            ...instructions, 
-            ...ix_deposit, 
-            ...oix_closeWSolAta
+    const marginFiBalances = await marginfiAccount.activeBalances.map((b) => b.bankPk);
+
+    const innerInstructions = [
+        ix_computePrice,
+        ...oix_createAtaLoan,
+        ...ix_borrow,
+        ...instructions,
+        ...ix_deposit,
+        ...oix_closeWSolAta,
+    ]
+
+    const beginFlashLoanIx = await marginfiAccount.makeBeginFlashLoanIx(innerInstructions.length + 1);
+    const endFlashLoanIx = await marginfiAccount.makeEndFlashLoanIx(marginFiBalances);
+
+    const blockhash = (await connection.getLatestBlockhash()).blockhash;
+    const messageV0 = new TransactionMessage({
+        payerKey: owner,
+        recentBlockhash: blockhash,
+        instructions: [
+            ...beginFlashLoanIx.instructions,
+            ...innerInstructions,
+            ...endFlashLoanIx.instructions
         ],
-        addressLookupTableAccounts: lookupTables
-    });
+    }).compileToV0Message(lookupTables);
+    const transaction = new VersionedTransaction(messageV0);
 
-    flashloanTx.sign([caller]);
+    transaction.sign([caller]);
 
-    return flashloanTx;
+    return transaction;
 }
