@@ -1,6 +1,6 @@
 import type AdvancedConnection from '@quartz-labs/connection';
 import { getVaultPublicKey, retryWithBackoff } from '@quartz-labs/sdk';
-import type { Connection, PublicKey } from '@solana/web3.js';
+import type { PublicKey } from '@solana/web3.js';
 
 export async function checkHasVaultHistory(connection: AdvancedConnection, wallet: PublicKey): Promise<boolean> {
     const vaultPda = getVaultPublicKey(wallet);

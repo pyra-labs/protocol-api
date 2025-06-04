@@ -2,7 +2,7 @@ import type { Connection, PublicKey } from '@solana/web3.js';
 import { BN, getTimeLockRentPayerPublicKey, type QuartzClient, type QuartzUser } from '@quartz-labs/sdk';
 import { buildTransaction, getNextTimeframeReset } from '../../../utils/helpers.js';
 import { HttpException } from "../../../utils/errors.js";
-import { SpendLimitTimeframe } from '../../../types/enums/SpendLimitTimeframe.enum.js';
+import type { SpendLimitTimeframe } from '../../../types/enums/SpendLimitTimeframe.enum.js';
 import { MIN_TIME_LOCK_RENT_PAYER_BALANCE } from '../../../config/constants.js';
 
 export const buildAdjustSpendLimitTransaction = async (
