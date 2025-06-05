@@ -1,7 +1,7 @@
-import { AddressLookupTableAccount, PublicKey, TransactionInstruction, TransactionMessage, VersionedTransaction, type Connection, type Keypair } from '@solana/web3.js';
+import { AddressLookupTableAccount, PublicKey, TransactionInstruction, TransactionMessage, VersionedTransaction, type Keypair } from '@solana/web3.js';
 import { baseUnitToDecimal, type MarketIndex, QuartzClient, TOKENS, DummyWallet, type QuartzUser, getTokenProgram, makeCreateAtaIxIfNeeded, getComputeUnitPriceIx } from '@quartz-labs/sdk';
 import { getConfig as getMarginfiConfig, MarginfiClient } from '@mrgnlabs/marginfi-client-v2';
-import { SwapMode, type QuoteResponse } from '@jup-ag/api';
+import type { SwapMode, QuoteResponse } from '@jup-ag/api';
 import { createCloseAccountInstruction, getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { HttpException } from '../../../utils/errors.js';
 import { fetchAndParse } from '../../../utils/helpers.js';
@@ -122,7 +122,6 @@ async function makeJupiterIx(
                 userPublicKey: address.toBase58(),
             })
         })
-        // biome-ignore lint: Allow any for Jupiter API response
     ).json() as any;
 
     if (instructions.error) {
@@ -134,11 +133,9 @@ async function makeJupiterIx(
         addressLookupTableAddresses
     } = instructions;
 
-    // biome-ignore lint: Allow any for Jupiter API response
     const deserializeInstruction = (instruction: any) => {
         return new TransactionInstruction({
             programId: new PublicKey(instruction.programId),
-            // biome-ignore lint: Allow any for Jupiter API response
             keys: instruction.accounts.map((key: any) => ({
                 pubkey: new PublicKey(key.pubkey),
                 isSigner: key.isSigner,

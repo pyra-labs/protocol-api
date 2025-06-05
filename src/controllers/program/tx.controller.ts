@@ -1,6 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
 import { SendTransactionError, TransactionExpiredBlockheightExceededError, VersionedTransaction } from '@solana/web3.js';
-import { HttpException } from '../../utils/errors.js';
 import { Controller } from '../../types/controller.class.js';
 import { getTimeLockRentPayerPublicKey, retryWithBackoff } from '@quartz-labs/sdk';
 import { z } from 'zod';
@@ -8,17 +7,6 @@ import config from '../../config/config.js';
 import AdvancedConnection from '@quartz-labs/connection';
 import { validateParams } from '../../utils/helpers.js';
 import { MIN_TIME_LOCK_RENT_PAYER_BALANCE } from '../../config/constants.js';
-
-const transactionSchema = z.object({
-    transaction: z.string()
-        .regex(/^[A-Za-z0-9+/]+={0,2}$/, 'Must be a valid base64 string')
-        .transform((val) => {
-            const buffer = Buffer.from(val, 'base64');
-            VersionedTransaction.deserialize(buffer); // Validate it's a valid VersionedTransaction
-            return buffer;
-        }),
-    skipPreflight: z.boolean().optional().default(false),
-});
 
 export class TxController extends Controller {
     private readonly MAX_DURATION = 70; // 70 second maximum in Vercel
@@ -112,7 +100,7 @@ export class TxController extends Controller {
             if (error instanceof SendTransactionError) {
                 const logs = await error.getLogs(this.connection)
                     .catch(() => [error.message]);
-                next(new Error("Transaction failed, error logs: " + logs));
+                next(new Error(`Transaction failed, error logs: ${logs}`));
                 return;
             }
             next(error);
@@ -120,7 +108,6 @@ export class TxController extends Controller {
     }
 
     public isUserPayingOrderRent = async (_: Request, res: Response, next: NextFunction): Promise<void> => {
-
         try {
             const rentPayerBalance = await this.connection.getBalance(getTimeLockRentPayerPublicKey());
             const isUserPaying = rentPayerBalance < MIN_TIME_LOCK_RENT_PAYER_BALANCE;

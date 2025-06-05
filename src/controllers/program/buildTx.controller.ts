@@ -1,9 +1,9 @@
 import type { NextFunction, Request, Response } from 'express';
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
 import { HttpException } from '../../utils/errors.js';
 import { buildAdjustSpendLimitTransaction } from './build-tx/adjustSpendLimit.js';
 import { Controller } from '../../types/controller.class.js';
-import { QuartzClient, MarketIndex, QuartzUser, isMarketIndex, TOKENS, MARKET_INDEX_SOL, getTokenProgram, makeCreateAtaIxIfNeeded, BN, getTimeLockRentPayerPublicKey } from '@quartz-labs/sdk';
+import { QuartzClient, MarketIndex, type QuartzUser, isMarketIndex, TOKENS, MARKET_INDEX_SOL, getTokenProgram, makeCreateAtaIxIfNeeded, BN, getTimeLockRentPayerPublicKey } from '@quartz-labs/sdk';
 import { SwapMode } from '@jup-ag/api';
 import config from '../../config/config.js';
 import { buildWithdrawTransaction } from './build-tx/withdraw.js';
@@ -86,9 +86,9 @@ export class BuildTxController extends Controller {
     initAccount = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "Wallet address is required",
-                    invalid_type_error: "Wallet address must be a string"
+                user: z.string({
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);
@@ -97,7 +97,7 @@ export class BuildTxController extends Controller {
                         return false;
                     }
                 }, {
-                    message: "Wallet address is not a valid Solana public key"
+                    message: "user is not a valid Solana public key"
                 }).transform(str => new PublicKey(str)),
                 spendLimitTransactionBaseUnits: z.string().refine(
                     (value) => {
@@ -121,7 +121,7 @@ export class BuildTxController extends Controller {
                 ).transform(value => Number(value) as SpendLimitTimeframe),
             });
 
-            const { address, spendLimitTransactionBaseUnits, spendLimitTimeframeBaseUnits, spendLimitTimeframe } = await validateParams(paramsSchema, req);
+            const { user, spendLimitTransactionBaseUnits, spendLimitTimeframeBaseUnits, spendLimitTimeframe } = await validateParams(paramsSchema, req);
 
             const nextTimeframeResetTimestamp = getNextTimeframeReset(spendLimitTimeframe);
 
@@ -132,14 +132,14 @@ export class BuildTxController extends Controller {
                 lookupTables,
                 signers
             } = await quartzClient.makeInitQuartzUserIxs(
-                address,
+                user,
                 new BN(spendLimitTransactionBaseUnits),
                 new BN(spendLimitTimeframeBaseUnits),
                 new BN(spendLimitTimeframe),
                 new BN(nextTimeframeResetTimestamp)
             );
 
-            const transaction = await buildTransaction(this.connection, ixs, address, lookupTables);
+            const transaction = await buildTransaction(this.connection, ixs, user, lookupTables);
             transaction.sign(signers);
 
             const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
@@ -215,9 +215,9 @@ export class BuildTxController extends Controller {
     upgradeAccount = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "Wallet address is required",
-                    invalid_type_error: "Wallet address must be a string"
+                user: z.string({
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);
@@ -226,17 +226,17 @@ export class BuildTxController extends Controller {
                         return false;
                     }
                 }, {
-                    message: "Wallet address is not a valid Solana public key"
+                    message: "user is not a valid Solana public key"
                 }).transform(str => new PublicKey(str))
             });
 
-            const { address } = await validateParams(paramsSchema, req);
+            const { user: userAddress } = await validateParams(paramsSchema, req);
 
             const quartzClient = await this.quartzClientPromise;
 
             let user: QuartzUser;
             try {
-                user = await quartzClient.getQuartzAccount(address);
+                user = await quartzClient.getQuartzAccount(userAddress);
             } catch {
                 throw new HttpException(400, "User not found");
             }
@@ -252,7 +252,7 @@ export class BuildTxController extends Controller {
                 DEFAULT_CARD_TIMEFRAME_RESET
             );
 
-            const transaction = await buildTransaction(this.connection, ixs, address, lookupTables);
+            const transaction = await buildTransaction(this.connection, ixs, userAddress, lookupTables);
             transaction.sign(signers);
 
             const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
@@ -268,9 +268,9 @@ export class BuildTxController extends Controller {
     withdraw = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "Wallet address is required",
-                    invalid_type_error: "Wallet address must be a string"
+                user: z.string({
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);
@@ -279,13 +279,13 @@ export class BuildTxController extends Controller {
                         return false;
                     }
                 }, {
-                    message: "Wallet address is not a valid Solana public key"
+                    message: "user is not a valid Solana public key"
                 }).transform(str => new PublicKey(str)),
                 amountBaseUnits: z.coerce.number().refine(
                     Number.isInteger,
                     { message: "amountBaseUnits must be an integer" }
                 ),
-                allowLoan: z.boolean(),
+                allowLoan: z.coerce.boolean(),
                 marketIndex: z.coerce.number().refine(
                     (value: number) => MarketIndex.includes(value as MarketIndex),
                     { message: "marketIndex must be a valid market index" }
@@ -299,10 +299,8 @@ export class BuildTxController extends Controller {
                     .transform(val => val === "true"),
             });
 
-            console.log("Running");
-
             const {
-                address,
+                user,
                 amountBaseUnits,
                 marketIndex,
                 allowLoan,
@@ -313,7 +311,7 @@ export class BuildTxController extends Controller {
 
             const quartzClient = await this.quartzClientPromise;
             const serializedTx = await buildWithdrawTransaction(
-                address,
+                user,
                 amountBaseUnits,
                 marketIndex,
                 allowLoan,
@@ -332,9 +330,9 @@ export class BuildTxController extends Controller {
     cancelWithdraw = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "Wallet address is required",
-                    invalid_type_error: "Wallet address must be a string"
+                user: z.string({
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);
@@ -343,7 +341,7 @@ export class BuildTxController extends Controller {
                         return false;
                     }
                 }, {
-                    message: "Wallet address is not a valid Solana public key"
+                    message: "user is not a valid Solana public key"
                 }).transform(str => new PublicKey(str)),
                 order: z.string().refine(
                     (value: string) => {
@@ -359,14 +357,14 @@ export class BuildTxController extends Controller {
             });
 
             const {
-                address,
+                user: userAddress,
                 order
             } = await validateParams(paramsSchema, req);
 
             const quartzClient = await this.quartzClientPromise;
             let user: QuartzUser;
             try {
-                user = await quartzClient.getQuartzAccount(address);
+                user = await quartzClient.getQuartzAccount(userAddress);
             } catch {
                 throw new HttpException(400, "User not found");
             }
@@ -382,7 +380,7 @@ export class BuildTxController extends Controller {
             const transaction = await buildTransaction(
                 this.connection,
                 ixs,
-                address,
+                userAddress,
                 lookupTables
             );
             transaction.sign(signers);
@@ -399,9 +397,9 @@ export class BuildTxController extends Controller {
     fulfilWithdraw = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "Wallet address is required",
-                    invalid_type_error: "Wallet address must be a string"
+                user: z.string({
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);
@@ -410,7 +408,7 @@ export class BuildTxController extends Controller {
                         return false;
                     }
                 }, {
-                    message: "Wallet address is not a valid Solana public key"
+                    message: "user is not a valid Solana public key"
                 }).transform(str => new PublicKey(str)),
                 order: z.string().refine(
                     (value: string) => {
@@ -426,14 +424,14 @@ export class BuildTxController extends Controller {
             });
 
             const {
-                address,
+                user: userAddress,
                 order
             } = await validateParams(paramsSchema, req);
 
             const quartzClient = await this.quartzClientPromise;
             let user: QuartzUser;
             try {
-                user = await quartzClient.getQuartzAccount(address);
+                user = await quartzClient.getQuartzAccount(userAddress);
             } catch {
                 throw new HttpException(400, "User not found");
             }
@@ -459,13 +457,13 @@ export class BuildTxController extends Controller {
                 signers
             } = await user.makeFulfilWithdrawIxs(
                 order,
-                address
+                userAddress
             );
 
             const transaction = await buildTransaction(
                 this.connection,
                 [...oix_createAta, ...ixs],
-                address,
+                userAddress,
                 lookupTables
             );
             transaction.sign(signers);
@@ -482,9 +480,9 @@ export class BuildTxController extends Controller {
     fulfilSpendLimit = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "Wallet address is required",
-                    invalid_type_error: "Wallet address must be a string"
+                user: z.string({
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);
@@ -493,7 +491,7 @@ export class BuildTxController extends Controller {
                         return false;
                     }
                 }, {
-                    message: "Wallet address is not a valid Solana public key"
+                    message: "user is not a valid Solana public key"
                 }).transform(str => new PublicKey(str)),
                 order: z.string().refine(
                     (value: string) => {
@@ -509,14 +507,14 @@ export class BuildTxController extends Controller {
             });
 
             const {
-                address,
+                user: userAddress,
                 order
             } = await validateParams(paramsSchema, req);
 
             const quartzClient = await this.quartzClientPromise;
             let user: QuartzUser;
             try {
-                user = await quartzClient.getQuartzAccount(address);
+                user = await quartzClient.getQuartzAccount(userAddress);
             } catch {
                 throw new HttpException(400, "User not found");
             }
@@ -527,9 +525,9 @@ export class BuildTxController extends Controller {
                 signers
             } = await user.makeFulfilSpendLimitsIxs(
                 order,
-                address
+                userAddress
             );
-            const transaction = await buildTransaction(this.connection, ixs, address, lookupTables);
+            const transaction = await buildTransaction(this.connection, ixs, userAddress, lookupTables);
             transaction.sign(signers);
 
             const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
@@ -544,9 +542,9 @@ export class BuildTxController extends Controller {
     increaseSpendLimits = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "Wallet address is required",
-                    invalid_type_error: "Wallet address must be a string"
+                user: z.string({
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);
@@ -555,7 +553,7 @@ export class BuildTxController extends Controller {
                         return false;
                     }
                 }, {
-                    message: "Wallet address is not a valid Solana public key"
+                    message: "user is not a valid Solana public key"
                 }).transform(str => new PublicKey(str)),
                 spendLimitTransactionBaseUnits: z.coerce.number().refine(
                     Number.isInteger,
@@ -574,7 +572,7 @@ export class BuildTxController extends Controller {
             });
 
             const {
-                address,
+                user: userAddress,
                 spendLimitTransactionBaseUnits,
                 spendLimitTimeframeBaseUnits,
                 spendLimitTimeframe
@@ -585,7 +583,7 @@ export class BuildTxController extends Controller {
             const quartzClient = await this.quartzClientPromise;
             let user: QuartzUser;
             try {
-                user = await quartzClient.getQuartzAccount(address);
+                user = await quartzClient.getQuartzAccount(userAddress);
             } catch {
                 throw new HttpException(400, "User not found");
             }
@@ -601,7 +599,7 @@ export class BuildTxController extends Controller {
                 new BN(nextTimeframeResetTimestamp)
             );
 
-            const transaction = await buildTransaction(this.connection, ixs, address, lookupTables);
+            const transaction = await buildTransaction(this.connection, ixs, userAddress, lookupTables);
             transaction.sign(signers);
 
             const serializedTx = Buffer.from(transaction.serialize()).toString("base64");
@@ -616,9 +614,9 @@ export class BuildTxController extends Controller {
     rescue = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "Wallet address is required",
-                    invalid_type_error: "Wallet address must be a string"
+                user: z.string({
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);
@@ -627,7 +625,7 @@ export class BuildTxController extends Controller {
                         return false;
                     }
                 }, {
-                    message: "Wallet address is not a valid Solana public key"
+                    message: "user is not a valid Solana public key"
                 }).transform(str => new PublicKey(str)),
                 mint: z.string().refine(
                     (value: string) => {
@@ -643,14 +641,14 @@ export class BuildTxController extends Controller {
             });
 
             const {
-                address,
+                user: userAddress,
                 mint
             } = await validateParams(paramsSchema, req);
 
             const quartzClient = await this.quartzClientPromise;
             let user: QuartzUser;
             try {
-                user = await quartzClient.getQuartzAccount(address);
+                user = await quartzClient.getQuartzAccount(userAddress);
             } catch {
                 throw new HttpException(400, "User not found");
             }
@@ -664,7 +662,7 @@ export class BuildTxController extends Controller {
             const transaction = await buildTransaction(
                 this.connection,
                 ixs,
-                address,
+                userAddress,
                 lookupTables
             );
 
@@ -682,8 +680,8 @@ export class BuildTxController extends Controller {
         try {
             const paramsSchema = z.object({
                 user: z.string({
-                    required_error: "Sender address is required",
-                    invalid_type_error: "Sender address must be a string"
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);

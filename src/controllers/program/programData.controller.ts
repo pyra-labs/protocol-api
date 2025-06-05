@@ -4,7 +4,7 @@ import { HttpException } from '../../utils/errors.js';
 import { AccountStatus } from '../../types/enums/AccountStatus.enum.js';
 import { Controller } from '../../types/controller.class.js';
 import config from '../../config/config.js';
-import { BN, getMarketIndicesRecord, getTokenAccountBalance, getTokenProgram, MARKET_INDEX_SOL, MarketIndex, QuartzClient, QuartzUser, TOKENS } from '@quartz-labs/sdk';
+import { BN, getMarketIndicesRecord, getTokenAccountBalance, getTokenProgram, MARKET_INDEX_SOL, MarketIndex, QuartzClient, type QuartzUser, TOKENS } from '@quartz-labs/sdk';
 import { getRemainingTimeframeLimit } from './program-data/spendLimits.js';
 import AdvancedConnection from '@quartz-labs/connection';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
@@ -25,9 +25,9 @@ export class ProgramDataController extends Controller {
     public getAccountStatus = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "Wallet address is required",
-                    invalid_type_error: "Wallet address must be a string"
+                user: z.string({
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);
@@ -40,18 +40,20 @@ export class ProgramDataController extends Controller {
                 }).transform(str => new PublicKey(str))
             });
 
-            const { address } = await validateParams(paramsSchema, req);
+            const { user } = await validateParams(paramsSchema, req);
 
             const [hasVaultHistory, isVaultInitialized, requiresUpgrade] = await Promise.all([
-                checkHasVaultHistory(this.connection, address),
-                checkIsVaultInitialized(this.connection, address),
-                checkRequiresUpgrade(this.connection, address)
+                checkHasVaultHistory(this.connection, user),
+                checkIsVaultInitialized(this.connection, user),
+                checkRequiresUpgrade(this.connection, user)
             ]);
 
             if (!isVaultInitialized && hasVaultHistory) {
                 res.status(200).json({ status: AccountStatus.CLOSED });
                 return;
-            } else if (isVaultInitialized) {
+            }
+
+            if (isVaultInitialized) {
                 if (requiresUpgrade) {
                     res.status(200).json({ status: AccountStatus.UPGRADE_REQUIRED });
                     return;
@@ -59,7 +61,9 @@ export class ProgramDataController extends Controller {
 
                 res.status(200).json({ status: AccountStatus.INITIALIZED });
                 return;
-            } else res.status(200).json({ status: AccountStatus.NOT_INITIALIZED });
+            }
+
+            res.status(200).json({ status: AccountStatus.NOT_INITIALIZED });
         } catch (error) {
             next(error);
         }
@@ -68,9 +72,9 @@ export class ProgramDataController extends Controller {
     public getSpendLimits = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "Wallet address is required",
-                    invalid_type_error: "Wallet address must be a string"
+                user: z.string({
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);
@@ -83,13 +87,13 @@ export class ProgramDataController extends Controller {
                 }).transform(str => new PublicKey(str))
             });
 
-            const { address } = await validateParams(paramsSchema, req);
+            const { user: userAddress } = await validateParams(paramsSchema, req);
 
             const quartzClient = await this.quartzClientPromise;
 
             let user: QuartzUser;
             try {
-                user = await quartzClient.getQuartzAccount(address);
+                user = await quartzClient.getQuartzAccount(userAddress);
             } catch {
                 throw new HttpException(400, "User not found");
             }
@@ -114,9 +118,9 @@ export class ProgramDataController extends Controller {
     public getWalletBalance = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const paramsSchema = z.object({
-                address: z.string({
-                    required_error: "publicKey is required",
-                    invalid_type_error: "publicKey must be a string"
+                user: z.string({
+                    required_error: "user is required",
+                    invalid_type_error: "user must be a string"
                 }).refine((str) => {
                     try {
                         new PublicKey(str);
@@ -125,7 +129,7 @@ export class ProgramDataController extends Controller {
                         return false;
                     }
                 }, {
-                    message: "publicKey is not a valid Solana public key"
+                    message: "user is not a valid Solana public key"
                 })
                     .refine(async (key) => {
                         return await QuartzClient.doesQuartzUserExist(
@@ -138,13 +142,13 @@ export class ProgramDataController extends Controller {
                     .transform((key) => new PublicKey(key))
             });
 
-            const { address } = await validateParams(paramsSchema, req);
+            const { user: userAddress } = await validateParams(paramsSchema, req);
 
             const balances = getMarketIndicesRecord<number>(0);
             for (const marketIndex of MarketIndex) {
                 if (marketIndex === MARKET_INDEX_SOL) {
                     const wallet_rent = await this.connection.getMinimumBalanceForRentExemption(0);
-                    const balance = await this.connection.getBalance(address);
+                    const balance = await this.connection.getBalance(userAddress);
                     const availableBalance = balance - wallet_rent;
                     balances[marketIndex] = Math.max(availableBalance, 0);
                     continue;
@@ -152,7 +156,7 @@ export class ProgramDataController extends Controller {
 
                 const mint = TOKENS[marketIndex].mint;
                 const tokenProgram = await getTokenProgram(this.connection, mint);
-                const ata = getAssociatedTokenAddressSync(mint, address, true, tokenProgram);
+                const ata = getAssociatedTokenAddressSync(mint, userAddress, true, tokenProgram);
                 balances[marketIndex] = await getTokenAccountBalance(this.connection, ata);
             }
 
