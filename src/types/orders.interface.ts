@@ -2,6 +2,7 @@ export interface TimeLockResponse {
     owner: string;
     isOwnerPayer: boolean;
     releaseSlot: number;
+    releaseTimestamp: number;
 }
 
 export interface WithdrawOrderResponse {

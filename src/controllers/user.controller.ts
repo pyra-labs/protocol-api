@@ -1,6 +1,6 @@
 import config from "../config/config.js";
 import type { NextFunction, Request, Response } from "express";
-import { bnToDecimal, validateParams } from "../utils/helpers.js";
+import { bnToDecimal, getSlotTimestamp, validateParams } from "../utils/helpers.js";
 import { PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
@@ -289,6 +289,9 @@ export class UserController extends Controller {
                 quartzClient.getOpenSpendLimitsOrders(address)
             ]);
 
+            const currentSlot = await this.connection.getSlot();
+            const now = Date.now();
+
             // Convert BNs to numbers
             const withdrawOrdersNumber = withdrawOrders.map(order => ({
                 publicKey: order.publicKey.toBase58(),
@@ -296,7 +299,12 @@ export class UserController extends Controller {
                     timeLock: {
                         owner: order.account.timeLock.owner.toBase58(),
                         isOwnerPayer: order.account.timeLock.isOwnerPayer,
-                        releaseSlot: order.account.timeLock.releaseSlot.toNumber()
+                        releaseSlot: order.account.timeLock.releaseSlot.toNumber(),
+                        releaseTimestamp: getSlotTimestamp(
+                            order.account.timeLock.releaseSlot.toNumber(),
+                            currentSlot,
+                            now
+                        )
                     },
                     amountBaseUnits: order.account.amountBaseUnits.toNumber(),
                     driftMarketIndex: order.account.driftMarketIndex.toNumber(),
@@ -311,7 +319,12 @@ export class UserController extends Controller {
                     timeLock: {
                         owner: order.account.timeLock.owner.toBase58(),
                         isOwnerPayer: order.account.timeLock.isOwnerPayer,
-                        releaseSlot: order.account.timeLock.releaseSlot.toNumber()
+                        releaseSlot: order.account.timeLock.releaseSlot.toNumber(),
+                        releaseTimestamp: getSlotTimestamp(
+                            order.account.timeLock.releaseSlot.toNumber(),
+                            currentSlot,
+                            now
+                        )
                     },
                     spendLimitPerTransaction: order.account.spendLimitPerTransaction.toNumber(),
                     spendLimitPerTimeframe: order.account.spendLimitPerTimeframe.toNumber(),
