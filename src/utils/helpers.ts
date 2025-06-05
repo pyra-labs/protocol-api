@@ -12,6 +12,7 @@ import { z } from "zod";
 import { HttpException } from "./errors.js";
 import type { Request } from "express";
 import { SpendLimitTimeframe } from "../types/enums/SpendLimitTimeframe.enum.js";
+import { AVERAGE_SLOT_TIME_MS } from "../config/constants.js";
 
 export async function validateParams<T extends z.ZodSchema>(
     schema: T,
@@ -185,7 +186,7 @@ export function baseUnitToDecimal(baseUnits: number, marketIndex: MarketIndex): 
 export async function fetchAndParse<T>(
     url: string,
     req?: RequestInit | undefined,
-    retries: number = 0
+    retries = 0
 ): Promise<T> {
     const response = await retryWithBackoff(
         async () => fetch(url, req),
@@ -193,7 +194,7 @@ export async function fetchAndParse<T>(
     );
 
     if (!response.ok) {
-        let body;
+        let body: any;
         try {
             body = await response.json();
         } catch {
@@ -246,4 +247,14 @@ export function getNextTimeframeReset(timeframe: SpendLimitTimeframe): number {
     }
 
     return Math.trunc(reset.getTime() / 1000); // Convert milliseconds to seconds
+}
+
+export function getSlotTimestamp(
+    targetSlot: number,
+    currentSlot: number,
+    currentTimestamp: number = Date.now()
+) {
+    const slotDifference = targetSlot - currentSlot;
+    const estimatedTimeOffset = slotDifference * AVERAGE_SLOT_TIME_MS;
+    return currentTimestamp + estimatedTimeOffset;
 }
