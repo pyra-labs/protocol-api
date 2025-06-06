@@ -184,6 +184,8 @@ export class BuildTxController extends Controller {
                 useMaxAmount: z.coerce.boolean().optional().default(false),
             });
 
+            const params = await validateParams(paramsSchema, req);
+            console.log(params);
             const {
                 user: userAddress,
                 amountSwapBaseUnits,
@@ -191,7 +193,7 @@ export class BuildTxController extends Controller {
                 marketIndexCollateral,
                 swapMode,
                 useMaxAmount
-            } = await validateParams(paramsSchema, req);
+            } = params;
 
             const serializedTx = await buildCollateralRepayTransaction(
                 userAddress,
