@@ -181,7 +181,8 @@ export class BuildTxController extends Controller {
                     { message: "marketIndexCollateral must be a valid market index" }
                 ).transform(val => val as MarketIndex),
                 swapMode: z.nativeEnum(SwapMode),
-                useMaxAmount: z.coerce.boolean().optional().default(false),
+                useMaxAmount: z.string().optional().default("false")
+                    .transform(val => val === "true")
             });
 
             const params = await validateParams(paramsSchema, req);
@@ -287,7 +288,8 @@ export class BuildTxController extends Controller {
                     Number.isInteger,
                     { message: "amountBaseUnits must be an integer" }
                 ),
-                allowLoan: z.coerce.boolean(),
+                allowLoan: z.string().optional().default("false")
+                    .transform(val => val === "true"),
                 marketIndex: z.coerce.number().refine(
                     (value: number) => MarketIndex.includes(value as MarketIndex),
                     { message: "marketIndex must be a valid market index" }
