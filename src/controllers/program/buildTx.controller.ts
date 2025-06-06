@@ -185,8 +185,6 @@ export class BuildTxController extends Controller {
                     .transform(val => val === "true")
             });
 
-            const params = await validateParams(paramsSchema, req);
-            console.log(params);
             const {
                 user: userAddress,
                 amountSwapBaseUnits,
@@ -194,7 +192,7 @@ export class BuildTxController extends Controller {
                 marketIndexCollateral,
                 swapMode,
                 useMaxAmount
-            } = params;
+            } = await validateParams(paramsSchema, req);
 
             const serializedTx = await buildCollateralRepayTransaction(
                 userAddress,
