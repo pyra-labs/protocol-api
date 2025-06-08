@@ -4,7 +4,7 @@ import { HttpException } from '../../utils/errors.js';
 import { AccountStatus } from '../../types/enums/AccountStatus.enum.js';
 import { Controller } from '../../types/controller.class.js';
 import config from '../../config/config.js';
-import { BN, getMarketIndicesRecord, getTokenAccountBalance, getTokenProgram, MARKET_INDEX_SOL, MarketIndex, QuartzClient, type QuartzUser, TOKENS } from '@quartz-labs/sdk';
+import { getMarketIndicesRecord, getTokenAccountBalance, getTokenProgram, MARKET_INDEX_SOL, MarketIndex, QuartzClient, type QuartzUser, TOKENS } from '@quartz-labs/sdk';
 import { getRemainingTimeframeLimit } from './program-data/spendLimits.js';
 import AdvancedConnection from '@quartz-labs/connection';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
@@ -98,9 +98,7 @@ export class ProgramDataController extends Controller {
                 throw new HttpException(400, "User not found");
             }
 
-            const currentSlot = await this.connection.getSlot();
-
-            const spendLimitTImeframeRemaining = getRemainingTimeframeLimit(user, new BN(currentSlot));
+            const spendLimitTImeframeRemaining = getRemainingTimeframeLimit(user);
 
             res.status(200).json({
                 timeframe: user.timeframeInSeconds.toNumber(),
