@@ -70,8 +70,7 @@ export class TxController extends Controller {
         }
     }
 
-    public sendTransaction = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-
+    public sendTransaction = async (req: Request, res: Response, _: NextFunction): Promise<void> => {
         const paramsSchema = z.object({
             transaction: z.string()
                 .regex(/^[A-Za-z0-9+/]+={0,2}$/, 'Must be a valid base64 string')
@@ -93,17 +92,20 @@ export class TxController extends Controller {
                 3
             );
 
-            console.log("Signature", signature);
             res.status(200).json({ signature });
         } catch (error) {
-            console.error(error);
             if (error instanceof SendTransactionError) {
                 const logs = await error.getLogs(this.connection)
                     .catch(() => [error.message]);
-                next(new Error(`Transaction failed, error logs: ${logs}`));
+
+                res.status(500).json({
+                    error: "Transaction failed",
+                    logs: logs
+                });
                 return;
             }
-            next(error);
+
+            res.status(500).json({ error: `${error}` });
         }
     }
 
