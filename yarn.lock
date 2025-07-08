@@ -826,10 +826,10 @@
     winston "^3.17.0"
     zod "^3.24.1"
 
-"@quartz-labs/sdk@0.19.3":
-  version "0.19.3"
-  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.19.3.tgz#1986cf658b6bfb57d66c05b92561b31df7efd7b6"
-  integrity sha512-yg/BYaYB0hCi+wiBPswfteRWDoYoYED1DYvAxOLoftR5IRPrizC2KprwJS7xROvZ603OuTW6FmNNNAN+NUpnrg==
+"@quartz-labs/sdk@0.19.5":
+  version "0.19.5"
+  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.19.5.tgz#19114d1bc18de11fd5c789bf40cdb268f8f3463e"
+  integrity sha512-PMPu+3+jdcYqRBOE1IOBmXv5td6lDMkNngsP6FFOQ1+Ps0dYF8MHd4owcjlr7xmtD4LkAyTgPGYaD9ortf/31g==
   dependencies:
     "@coral-xyz/anchor" "^0.29.0"
     "@drift-labs/sdk" "2.121.0-beta.5"
