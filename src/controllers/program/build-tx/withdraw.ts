@@ -35,7 +35,7 @@ export const buildWithdrawTransaction = async (
     if (mint !== TOKENS[MARKET_INDEX_SOL].mint) {
         const mintTokenProgram = await getTokenProgram(connection, mint);
         const ata = getAssociatedTokenAddressSync(mint, address, true, mintTokenProgram);
-        oix_createAta = await makeCreateAtaIxIfNeeded(connection, ata, address, mint, mintTokenProgram);
+        oix_createAta = await makeCreateAtaIxIfNeeded(connection, ata, address, mint, mintTokenProgram, address);
     }
 
     const reduceOnly = !allowLoan;

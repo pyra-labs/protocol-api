@@ -204,7 +204,14 @@ async function buildFlashLoanTransaction(
     const mintLoan = TOKENS[flashLoanMarketIndex].mint;
     const mintLoanTokenProgram = await getTokenProgram(connection, mintLoan);
     const walletAtaLoan = getAssociatedTokenAddressSync(mintLoan, caller.publicKey, true, mintLoanTokenProgram);
-    const oix_createAtaLoan = await makeCreateAtaIxIfNeeded(connection, walletAtaLoan, caller.publicKey, mintLoan, mintLoanTokenProgram);
+    const oix_createAtaLoan = await makeCreateAtaIxIfNeeded(
+        connection,
+        walletAtaLoan,
+        caller.publicKey,
+        mintLoan,
+        mintLoanTokenProgram,
+        owner
+    );
 
     const oix_closeWSolAta: TransactionInstruction[] = [];
     if (TOKENS[flashLoanMarketIndex].name === "SOL") {
