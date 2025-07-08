@@ -450,7 +450,14 @@ export class BuildTxController extends Controller {
                 const destination = orderAccount.destination;
                 const mintTokenProgram = await getTokenProgram(this.connection, mint);
                 const ata = getAssociatedTokenAddressSync(mint, destination, true, mintTokenProgram);
-                oix_createAta = await makeCreateAtaIxIfNeeded(this.connection, ata, destination, mint, mintTokenProgram);
+                oix_createAta = await makeCreateAtaIxIfNeeded(
+                    this.connection,
+                    ata,
+                    destination,
+                    mint,
+                    mintTokenProgram,
+                    userAddress
+                );
             }
 
             const {
@@ -761,7 +768,14 @@ export class BuildTxController extends Controller {
             if (mint !== TOKENS[MARKET_INDEX_SOL].mint) {
                 const mintTokenProgram = await getTokenProgram(this.connection, mint);
                 const ata = getAssociatedTokenAddressSync(mint, destination, true, mintTokenProgram);
-                oix_createAta = await makeCreateAtaIxIfNeeded(this.connection, ata, destination, mint, mintTokenProgram);
+                oix_createAta = await makeCreateAtaIxIfNeeded(
+                    this.connection,
+                    ata,
+                    destination,
+                    mint,
+                    mintTokenProgram,
+                    userAddress
+                );
             }
 
             const reduceOnly = !allowLoan;
