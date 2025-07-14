@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: protocol-api
+  namespace: prod
+  labels:
+    env: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: protocol-api
+  template:
+    metadata:
+      name: protocol-api
+      labels:
+        env: prod
+        app: protocol-api
+    spec:
+      containers:
+        - image: LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE:TAG
+          name: api
+          env:
+            - name: GOOGLE_CLOUD_PROJECT
+              value: festive-cirrus-452916-c1
+            - name: RPC_URLS
+              valueFrom:
+                secretKeyRef:
+                  name: rpc-urls
+                  key: key
+            - name: PORT
+              value: "8080"
+            - name: EMAIL_TO
+              value: ben@harpoon.dev,iarla@pyra.fi
+            - name: EMAIL_FROM
+              value: diego@quartzpay.io
+            - name: EMAIL_HOST
+              value: smtp-relay.brevo.com
+            - name: EMAIL_PORT
+              value: "587"
+            - name: EMAIL_USER
+              value: 77aaea001@smtp-brevo.com
+            - name: EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: email-password
+                  key: key
+            - name: GOOGLE_CLIENT_EMAIL
+              value: waitlist-api@quartz-waitlist.iam.gserviceaccount.com
+            - name: GOOGLE_PROJECT_ID
+              value: quartz-waitlist
+            - name: GOOGLE_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: google-private-key
+                  key: key
+            - name: GOOGLE_SPREADSHEET_ID
+              value: 1ZgPBQaxFZmHaU0QKVVMnRRceuSmaHrFYpxOkw-A4Ezc
+            - name: WEBFLOW_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: webflow-access-token
+                  key: key
+            - name: BREVO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: brevo-api-key
+                  key: key
+            - name: FLASH_LOAN_CALLER
+              valueFrom:
+                secretKeyRef:
+                  name: flash-loan-caller
+                  key: key
+            - name: ROUTE_PREFIX
+              value: /v1
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 250m
+            limits:
+              memory: 512Mi
+              cpu: 500m
+          ports:
+            - containerPort: 8080
+              name: http
+          securityContext:
+            runAsUser: 1005
+            runAsNonRoot: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: protocol-api
+  namespace: prod
+  annotations:
+    cloud.google.com/neg: '{"exposed_ports": {"8080":{}}}'
+    cloud.google.com/backend-config: '{"ports": {"8080": "protocol-api-backend-config"}}'
+spec:
+  selector:
+    app: protocol-api
+    env: prod
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+      protocol: TCP
+  type: NodePort
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: protocol-api-backend-config
+  namespace: prod
+spec:
+  healthCheck:
+    type: HTTP
+    requestPath: /v1/
+    port: 8080
+    checkIntervalSec: 30
+    timeoutSec: 10
+    healthyThreshold: 2
+    unhealthyThreshold: 3
