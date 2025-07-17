@@ -203,6 +203,37 @@
     yargs "17.7.2"
     zstddec "0.1.0"
 
+"@drift-labs/sdk@2.128.0-beta.6":
+  version "2.128.0-beta.6"
+  resolved "https://registry.yarnpkg.com/@drift-labs/sdk/-/sdk-2.128.0-beta.6.tgz#5106cfe9e67644a1cceb64270d33d2a8b31e5d22"
+  integrity sha512-3JPuPWfuNz4ixv7AOUNQFRRcwrLLZWAVDP8oGqSIwJpf+oXSsPWr8ciO9SCy4f3wII49EX7AmRJJ26h8MBV4Fg==
+  dependencies:
+    "@coral-xyz/anchor" "0.29.0"
+    "@coral-xyz/anchor-30" "npm:@coral-xyz/anchor@0.30.1"
+    "@ellipsis-labs/phoenix-sdk" "1.4.5"
+    "@grpc/grpc-js" "1.12.6"
+    "@openbook-dex/openbook-v2" "0.2.10"
+    "@project-serum/serum" "0.13.65"
+    "@pythnetwork/client" "2.5.3"
+    "@pythnetwork/price-service-sdk" "1.7.1"
+    "@pythnetwork/pyth-solana-receiver" "0.7.0"
+    "@solana/spl-token" "0.4.13"
+    "@solana/web3.js" "1.98.0"
+    "@switchboard-xyz/common" "3.0.14"
+    "@switchboard-xyz/on-demand" "2.4.1"
+    "@triton-one/yellowstone-grpc" "1.3.0"
+    anchor-bankrun "0.3.0"
+    nanoid "3.3.4"
+    node-cache "5.1.2"
+    rpc-websockets "7.5.1"
+    solana-bankrun "0.3.1"
+    strict-event-emitter-types "2.0.0"
+    tweetnacl "1.0.3"
+    tweetnacl-util "0.15.1"
+    uuid "8.3.2"
+    yargs "17.7.2"
+    zstddec "0.1.0"
+
 "@ellipsis-labs/phoenix-sdk@1.4.5":
   version "1.4.5"
   resolved "https://registry.yarnpkg.com/@ellipsis-labs/phoenix-sdk/-/phoenix-sdk-1.4.5.tgz#42cf8de8463b32c910ab8844eae71ca082a6773a"
@@ -826,13 +857,13 @@
     winston "^3.17.0"
     zod "^3.24.1"
 
-"@quartz-labs/sdk@0.19.5":
-  version "0.19.5"
-  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.19.5.tgz#19114d1bc18de11fd5c789bf40cdb268f8f3463e"
-  integrity sha512-PMPu+3+jdcYqRBOE1IOBmXv5td6lDMkNngsP6FFOQ1+Ps0dYF8MHd4owcjlr7xmtD4LkAyTgPGYaD9ortf/31g==
+"@quartz-labs/sdk@0.19.6":
+  version "0.19.6"
+  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.19.6.tgz#d35166dbb59896178f2a4cd819fa6ca0e884c5cf"
+  integrity sha512-BRqg8oReJTEfqSasF44bjlsAGniTRD4aqGoOEQfZnE+gTfbdmsjXXtO8rlrELWKlB9renghqnWp+KKhxeIemXg==
   dependencies:
     "@coral-xyz/anchor" "^0.29.0"
-    "@drift-labs/sdk" "2.121.0-beta.5"
+    "@drift-labs/sdk" "2.128.0-beta.6"
     "@jup-ag/api" "6.0.30"
     "@pythnetwork/pyth-solana-receiver" "^0.9.1"
     "@quartz-labs/connection" "^2.0.0"
@@ -1050,6 +1081,17 @@
     "@solana/buffer-layout-utils" "^0.2.0"
     buffer "^6.0.3"
 
+"@solana/spl-token@0.4.13", "@solana/spl-token@^0.4.0", "@solana/spl-token@^0.4.9":
+  version "0.4.13"
+  resolved "https://registry.yarnpkg.com/@solana/spl-token/-/spl-token-0.4.13.tgz#8f65c3c2b315e1a00a91b8d0f60922c6eb71de62"
+  integrity sha512-cite/pYWQZZVvLbg5lsodSovbetK/eA24gaR0eeUeMuBAMNrT8XFCwaygKy0N2WSg3gSyjjNpIeAGBAKZaY/1w==
+  dependencies:
+    "@solana/buffer-layout" "^4.0.0"
+    "@solana/buffer-layout-utils" "^0.2.0"
+    "@solana/spl-token-group" "^0.0.7"
+    "@solana/spl-token-metadata" "^0.1.6"
+    buffer "^6.0.3"
+
 "@solana/spl-token@^0.1.6", "@solana/spl-token@^0.1.8":
   version "0.1.8"
   resolved "https://registry.yarnpkg.com/@solana/spl-token/-/spl-token-0.1.8.tgz#f06e746341ef8d04165e21fc7f555492a2a0faa6"
@@ -1070,17 +1112,6 @@
     "@solana/buffer-layout" "^4.0.0"
     "@solana/buffer-layout-utils" "^0.2.0"
     "@solana/spl-token-metadata" "^0.1.2"
-    buffer "^6.0.3"
-
-"@solana/spl-token@^0.4.0", "@solana/spl-token@^0.4.9":
-  version "0.4.13"
-  resolved "https://registry.yarnpkg.com/@solana/spl-token/-/spl-token-0.4.13.tgz#8f65c3c2b315e1a00a91b8d0f60922c6eb71de62"
-  integrity sha512-cite/pYWQZZVvLbg5lsodSovbetK/eA24gaR0eeUeMuBAMNrT8XFCwaygKy0N2WSg3gSyjjNpIeAGBAKZaY/1w==
-  dependencies:
-    "@solana/buffer-layout" "^4.0.0"
-    "@solana/buffer-layout-utils" "^0.2.0"
-    "@solana/spl-token-group" "^0.0.7"
-    "@solana/spl-token-metadata" "^0.1.6"
     buffer "^6.0.3"
 
 "@solana/wallet-adapter-base@^0.9.23":
