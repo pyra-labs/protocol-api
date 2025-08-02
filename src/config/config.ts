@@ -47,6 +47,7 @@ const envSchema = z.object({
             }
         }
     ),
+    INTERNAL_API_URL: z.string().url(),
     ROUTE_PREFIX: z.string().optional(),
 });
 
