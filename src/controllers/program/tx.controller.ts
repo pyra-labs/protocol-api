@@ -97,9 +97,8 @@ export class TxController extends Controller {
             if (error instanceof SendTransactionError) {
                 const logs = await error.getLogs(this.connection)
                     .catch(() => [error.message]);
-
                 res.status(500).json({
-                    error: "Transaction failed",
+                    error: `Transaction failed: ${error.message}`,
                     logs: logs
                 });
                 return;

@@ -1,11 +1,11 @@
 import config from "../config/config.js";
 import type { NextFunction, Request, Response } from "express";
-import { bnToDecimal, getSlotTimestamp, validateParams } from "../utils/helpers.js";
+import { bnToDecimal, fetchAndParse, getSlotTimestamp, validateParams } from "../utils/helpers.js";
 import { PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
 import { Controller } from "../types/controller.class.js";
-import type { SpendLimitsOrderAccountResponse, WithdrawOrderAccountResponse } from "../types/orders.interface.js";
+import type { SpendLimitsOrderAccountResponse, SpendLimitsOrderInternalResponse, WithdrawOrderAccountResponse, WithdrawOrderInternalResponse } from "../types/orders.interface.js";
 import AdvancedConnection from "@quartz-labs/connection";
 import { z } from "zod";
 
@@ -271,71 +271,68 @@ export class UserController extends Controller {
             const paramsSchema = z.object({
                 address: this.addressSchema
             });
-
             const { address } = await validateParams(paramsSchema, req);
 
-            try {
-                await this.getQuartzUser(address);
-            } catch {
+            if (!QuartzClient.doesQuartzUserExist(this.connection, address)) {
                 throw new HttpException(400, "Quartz account not found");
             }
 
-            const quartzClient = await this.quartzClientPromise;
-            const [
+            const endpoint = `${config.INTERNAL_API_URL}user/open-orders?publicKey=${address}`;
+            const {
                 withdrawOrders,
-                spendLimitOrders
-            ] = await Promise.all([
-                quartzClient.getOpenWithdrawOrders(address),
-                quartzClient.getOpenSpendLimitsOrders(address)
-            ]);
+                spendLimitsOrders
+            } = await fetchAndParse<{
+                withdrawOrders: WithdrawOrderInternalResponse[];
+                spendLimitsOrders: SpendLimitsOrderInternalResponse[];
+            }>(endpoint);
 
             const currentSlot = await this.connection.getSlot();
             const now = Date.now();
 
             // Convert BNs to numbers
-            const withdrawOrdersNumber = withdrawOrders.map(order => ({
-                publicKey: order.publicKey.toBase58(),
+            const withdrawOrdersFormatted = withdrawOrders.map(order => ({
+                publicKey: order.publicKey,
                 account: {
                     timeLock: {
-                        owner: order.account.timeLock.owner.toBase58(),
-                        isOwnerPayer: order.account.timeLock.isOwnerPayer,
-                        releaseSlot: order.account.timeLock.releaseSlot.toNumber(),
+                        owner: order.account.time_lock.owner,
+                        isOwnerPayer: order.account.time_lock.is_owner_payer,
+                        releaseSlot: order.account.time_lock.release_slot,
                         releaseTimestamp: getSlotTimestamp(
-                            order.account.timeLock.releaseSlot.toNumber(),
+                            order.account.time_lock.release_slot,
                             currentSlot,
                             now
                         )
                     },
-                    amountBaseUnits: order.account.amountBaseUnits.toNumber(),
-                    driftMarketIndex: order.account.driftMarketIndex.toNumber(),
-                    reduceOnly: order.account.reduceOnly,
-                    destination: order.account.destination.toBase58()
+                    amountBaseUnits: order.account.amount_base_units,
+                    driftMarketIndex: order.account.drift_market_index,
+                    reduceOnly: order.account.reduce_only,
+                    destination: order.account.destination
                 }
             })) as WithdrawOrderAccountResponse[];
 
-            const spendLimitOrdersNumber = spendLimitOrders.map(order => ({
-                publicKey: order.publicKey.toBase58(),
+            const spendLimitOrdersFormatted = spendLimitsOrders.map(order => ({
+                publicKey: order.publicKey,
                 account: {
                     timeLock: {
-                        owner: order.account.timeLock.owner.toBase58(),
-                        isOwnerPayer: order.account.timeLock.isOwnerPayer,
-                        releaseSlot: order.account.timeLock.releaseSlot.toNumber(),
+                        owner: order.account.time_lock.owner,
+                        isOwnerPayer: order.account.time_lock.is_owner_payer,
+                        releaseSlot: order.account.time_lock.release_slot,
                         releaseTimestamp: getSlotTimestamp(
-                            order.account.timeLock.releaseSlot.toNumber(),
+                            order.account.time_lock.release_slot,
                             currentSlot,
                             now
                         )
                     },
-                    spendLimitPerTransaction: order.account.spendLimitPerTransaction.toNumber(),
-                    spendLimitPerTimeframe: order.account.spendLimitPerTimeframe.toNumber(),
-                    timeframeInSeconds: order.account.timeframeInSeconds.toNumber(),
-                    nextTimeframeResetTimestamp: order.account.nextTimeframeResetTimestamp.toNumber()
+                    spendLimitPerTransaction: order.account.spend_limit_per_transaction,
+                    spendLimitPerTimeframe: order.account.spend_limit_per_timeframe,
+                    timeframeInSeconds: order.account.timeframe_in_seconds,
+                    nextTimeframeResetTimestamp: order.account.next_timeframe_reset_timestamp
                 }
             })) as SpendLimitsOrderAccountResponse[];
 
             res.status(200).json({
-                withdrawOrders: withdrawOrdersNumber,
-                spendLimitOrders: spendLimitOrdersNumber
+                withdrawOrders: withdrawOrdersFormatted,
+                spendLimitOrders: spendLimitOrdersFormatted
             });
         } catch (error) {
             next(error);
