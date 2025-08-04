@@ -71,6 +71,8 @@ spec:
                 secretKeyRef:
                   name: flash-loan-caller
                   key: key
+            - name: INTERNAL_API_URL
+              value: https://internal.api.quartzpay.io/
             - name: ROUTE_PREFIX
               value: /v1
           resources:
