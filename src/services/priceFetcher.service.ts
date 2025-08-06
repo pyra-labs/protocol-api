@@ -1,4 +1,4 @@
-import { getMarketIndicesRecord, type MarketIndex, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
+import { fetchAndParse, getMarketIndicesRecord, type MarketIndex, retryWithBackoff, TOKENS } from "@quartz-labs/sdk";
 
 export class PriceFetcherService {
     private static instance: PriceFetcherService;
@@ -27,12 +27,9 @@ export class PriceFetcherService {
 
             const data = await retryWithBackoff(
                 async () => {
-                    const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
-                    if (!response.ok) {
-                        throw new Error("Failed to fetch data from CoinGecko");
-                    }
-                    const body = await response.json();
-                    return body as Record<string, { usd: number }>;
+                    return await fetchAndParse<Record<string, { usd: number }>>(
+                        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`
+                    );
                 },
                 3
             )
