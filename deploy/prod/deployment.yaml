@@ -73,7 +73,7 @@ spec:
                   name: flash-loan-caller
                   key: key
             - name: INTERNAL_API_URL
-              value: https://internal.api.quartzpay.io/
+              value: https://api.pyra.fi/card/
             - name: ROUTE_PREFIX
               value: /v1
           resources:
