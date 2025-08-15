@@ -5,9 +5,6 @@ metadata:
   namespace: prod
   labels:
     env: prod
-  annotations:
-    cloud.google.com/neg: '{"ingress": true, "exposed_ports": {"8080":{}}}'
-    cloud.google.com/backend-config: '{"ports": {"8080": "protocol-api-backend-config"}}'
 spec:
   replicas: 1
   selector:
@@ -19,6 +16,7 @@ spec:
       labels:
         env: prod
         app: protocol-api
+        ingress: public
     spec:
       containers:
         - image: LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE:TAG
@@ -98,8 +96,8 @@ metadata:
   name: protocol-api
   namespace: prod
   annotations:
-    cloud.google.com/neg: '{"exposed_ports": {"8080":{}}}'
-    cloud.google.com/backend-config: '{"ports": {"8080": "protocol-api-backend-config"}}'
+    cloud.google.com/neg: '{"ingress": true}'
+    cloud.google.com/backend-config: '{"default":"protocol-api-backend-config"}'
 spec:
   selector:
     app: protocol-api
@@ -109,7 +107,7 @@ spec:
       targetPort: 8080
       name: http
       protocol: TCP
-  type: NodePort
+  type: ClusterIP
 ---
 apiVersion: cloud.google.com/v1
 kind: BackendConfig
