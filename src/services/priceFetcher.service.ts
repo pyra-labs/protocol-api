@@ -1,11 +1,10 @@
-import { getMarketIndicesRecord, type MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
-import { getPrices } from "../utils/helpers.js";
+import { getMarketIndicesRecord, getPrices, type MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
 
 export class PriceFetcherService {
     private static instance: PriceFetcherService;
 
     private priceCache: Record<MarketIndex, { price: number; timestamp: number }> = getMarketIndicesRecord({ price: 0, timestamp: 0 });
-    private PRICE_CACHE_DURATION = 60_000;
+    private PRICE_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
     private constructor() {}
     
@@ -25,9 +24,10 @@ export class PriceFetcherService {
 
         if (uncachedIndices.length > 0) {
             const data = await retryWithBackoff(
-                async () => await getPrices(),
+                async () => await getPrices(false), // CoinGecko API first, then Pyth
                 3
             );
+            console.log(data);
 
             // Update price cache with new data
             for (const [marketIndex, price] of Object.entries(data)) {
