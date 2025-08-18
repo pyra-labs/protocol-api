@@ -309,8 +309,6 @@ export class BuildTxController extends Controller {
                 useMaxAmount
             } = await validateParams(paramsSchema, req);
 
-            console.log("Validated params");
-
             const quartzClient = await this.quartzClientPromise;
             const serializedTx = await buildWithdrawTransaction(
                 user,

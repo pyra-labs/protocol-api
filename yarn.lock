@@ -864,23 +864,23 @@
   integrity sha512-+dm1nZfQORZ+msKtzS5Q3w6jf0cDkSf8OieP7cU0gn/NPDN5zDJ5sbpVvK0C1uyk5A49176k9qugjLHBv9Ue9w==
   dependencies:
     "@coral-xyz/anchor" "^0.29.0"
+    "@drift-labs/sdk" "2.121.0-beta.5"
+    "@jup-ag/api" "6.0.30"
+    "@pythnetwork/pyth-solana-receiver" "^0.9.1"
+    "@solana/spl-token" "^0.4.9"
+    bn.js "^5.2.1"
+
+"@quartz-labs/sdk@^0.23.1":
+  version "0.23.1"
+  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.23.1.tgz#6e2c2263747b5e46570001a94bd1864deb978132"
+  integrity sha512-+dm1nZfQORZ+msKtzS5Q3w6jf0cDkSf8OieP7cU0gn/NPDN5zDJ5sbpVvK0C1uyk5A49176k9qugjLHBv9Ue9w==
+  dependencies:
+    "@coral-xyz/anchor" "^0.29.0"
     "@drift-labs/sdk" "2.131.0-beta.11"
     "@jup-ag/api" "6.0.30"
     "@pythnetwork/pyth-solana-receiver" "^0.9.1"
     "@quartz-labs/connection" "^2.0.0"
     "@quartz-labs/sdk" "^0.18.3"
-    "@solana/spl-token" "^0.4.9"
-    bn.js "^5.2.1"
-
-"@quartz-labs/sdk@^0.18.3":
-  version "0.18.3"
-  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.18.3.tgz#50d15ce6c2d4f37b140613da6f484dab8b097a57"
-  integrity sha512-u+AAGobXT56zkGpjWJu0BN9n4H7B3XRWbS487gTZgw7OSIw/UyfHxOkj6VhjdOHINLGkfUg62+zOikXDQG5hww==
-  dependencies:
-    "@coral-xyz/anchor" "^0.29.0"
-    "@drift-labs/sdk" "2.121.0-beta.5"
-    "@jup-ag/api" "6.0.30"
-    "@pythnetwork/pyth-solana-receiver" "^0.9.1"
     "@solana/spl-token" "^0.4.9"
     bn.js "^5.2.1"
 
