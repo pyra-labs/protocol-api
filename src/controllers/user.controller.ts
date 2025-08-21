@@ -93,10 +93,6 @@ export class UserController extends Controller {
             });
 
             if (uncachedMarketIndices.length > 0) {
-                console.log(`RPC_URLS: ${config.RPC_URLS.join(", ").split('').map((char, index) => 
-                    index % 2 === 1 ? '*' : char
-                ).join('')}`);
-                
                 const promises = uncachedMarketIndices.map(async (index) => {
                     let depositRateBN: BN;
                     let borrowRateBN: BN;
@@ -104,7 +100,6 @@ export class UserController extends Controller {
                         depositRateBN = await retryWithBackoff(
                             async () => {
                                 const rate = await quartzClient.getDepositRate(index);
-                                console.log(`Index ${index} deposit rate: ${rate.toNumber()}`);
                                 return rate;
                             },
                             3
@@ -112,7 +107,6 @@ export class UserController extends Controller {
                         borrowRateBN = await retryWithBackoff(
                             async () => {
                                 const rate = await quartzClient.getBorrowRate(index);
-                                console.log(`Index ${index} borrow rate: ${rate.toNumber()}`);
                                 return rate;
                             },
                             3
