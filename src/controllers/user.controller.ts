@@ -109,6 +109,8 @@ export class UserController extends Controller {
                         throw new HttpException(400, `Could not find rates for spot market index ${index}`);
                     }
 
+                    console.log(index, depositRateBN.toNumber(), borrowRateBN.toNumber());
+
                     const ltv = await quartzClient.getCollateralWeight(index);
 
                     // Update cache
