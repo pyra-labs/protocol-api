@@ -858,22 +858,10 @@
     winston "^3.17.0"
     zod "^3.24.1"
 
-"@quartz-labs/sdk@0.23.1":
-  version "0.23.1"
-  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.23.1.tgz#6e2c2263747b5e46570001a94bd1864deb978132"
-  integrity sha512-+dm1nZfQORZ+msKtzS5Q3w6jf0cDkSf8OieP7cU0gn/NPDN5zDJ5sbpVvK0C1uyk5A49176k9qugjLHBv9Ue9w==
-  dependencies:
-    "@coral-xyz/anchor" "^0.29.0"
-    "@drift-labs/sdk" "2.121.0-beta.5"
-    "@jup-ag/api" "6.0.30"
-    "@pythnetwork/pyth-solana-receiver" "^0.9.1"
-    "@solana/spl-token" "^0.4.9"
-    bn.js "^5.2.1"
-
-"@quartz-labs/sdk@^0.23.1":
-  version "0.23.1"
-  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.23.1.tgz#6e2c2263747b5e46570001a94bd1864deb978132"
-  integrity sha512-+dm1nZfQORZ+msKtzS5Q3w6jf0cDkSf8OieP7cU0gn/NPDN5zDJ5sbpVvK0C1uyk5A49176k9qugjLHBv9Ue9w==
+"@quartz-labs/sdk@0.24.1":
+  version "0.24.1"
+  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.24.1.tgz#9bf8c985050766785580236d1ccb1cae88c0d445"
+  integrity sha512-48z8FPQ576+ogRX+4AZGmP+y4SsZP0xT1CjkWFL+yOo3xaa9CFD0LfosRHako2e5hRFpRzKYBwohDryt6OBV8Q==
   dependencies:
     "@coral-xyz/anchor" "^0.29.0"
     "@drift-labs/sdk" "2.131.0-beta.11"
@@ -881,6 +869,18 @@
     "@pythnetwork/pyth-solana-receiver" "^0.9.1"
     "@quartz-labs/connection" "^2.0.0"
     "@quartz-labs/sdk" "^0.18.3"
+    "@solana/spl-token" "^0.4.9"
+    bn.js "^5.2.1"
+
+"@quartz-labs/sdk@^0.18.3":
+  version "0.18.3"
+  resolved "https://registry.yarnpkg.com/@quartz-labs/sdk/-/sdk-0.18.3.tgz#50d15ce6c2d4f37b140613da6f484dab8b097a57"
+  integrity sha512-u+AAGobXT56zkGpjWJu0BN9n4H7B3XRWbS487gTZgw7OSIw/UyfHxOkj6VhjdOHINLGkfUg62+zOikXDQG5hww==
+  dependencies:
+    "@coral-xyz/anchor" "^0.29.0"
+    "@drift-labs/sdk" "2.121.0-beta.5"
+    "@jup-ag/api" "6.0.30"
+    "@pythnetwork/pyth-solana-receiver" "^0.9.1"
     "@solana/spl-token" "^0.4.9"
     bn.js "^5.2.1"
 
@@ -2209,9 +2209,9 @@ chalk@^5.3.0:
   integrity sha512-zgVZuo2WcZgfUEmsn6eO3kINexW8RAE4maiQ8QNs8CtpPCSyMiYsULR3HQYkm3w8FIA3SberyMJMSldGsW+U3w==
 
 chalk@^5.4.1:
-  version "5.5.0"
-  resolved "https://registry.yarnpkg.com/chalk/-/chalk-5.5.0.tgz#67ada1df5ca809dc84c9b819d76418ddcf128428"
-  integrity sha512-1tm8DTaJhPBG3bIkVeZt1iZM9GfSX2lzOeDVZH9R9ffRHpmHvxZ/QhgQH/aDTkswQVt+YHdXAdS/In/30OjCbg==
+  version "5.6.0"
+  resolved "https://registry.yarnpkg.com/chalk/-/chalk-5.6.0.tgz#a1a8d294ea3526dbb77660f12649a08490e33ab8"
+  integrity sha512-46QrSQFyVSEyYAgQ22hQ+zDa60YHA4fBstHmtSApj1Y5vKtG27fWowW03jCk5KcbXEWPZUIR894aARCA/G1kfQ==
 
 chalk@~4.1.2:
   version "4.1.2"
@@ -3951,9 +3951,9 @@ undefsafe@^2.0.5:
   integrity sha512-WxONCrssBM8TSPRqN5EmsjVrsv4A8X12J4ArBiiayv3DyyG3ZlIg6yysuuSYdZsVz3TKcTg2fd//Ujd4CHV1iA==
 
 undici-types@^7.11.0:
-  version "7.13.0"
-  resolved "https://registry.yarnpkg.com/undici-types/-/undici-types-7.13.0.tgz#a20ba7c0a2be0c97bd55c308069d29d167466bff"
-  integrity sha512-Ov2Rr9Sx+fRgagJ5AX0qvItZG/JKKoBRAVITs1zk7IqZGTJUwgUr7qoYBpWwakpWilTZFM98rG/AFRocu10iIQ==
+  version "7.14.0"
+  resolved "https://registry.yarnpkg.com/undici-types/-/undici-types-7.14.0.tgz#4c037b32ca4d7d62fae042174604341588bc0840"
+  integrity sha512-QQiYxHuyZ9gQUIrmPo3IA+hUl4KYk8uSA7cHrcKd/l3p1OTpZcM0Tbp9x7FAtXdAYhlasd60ncPpgu6ihG6TOA==
 
 undici-types@~5.26.4:
   version "5.26.5"
