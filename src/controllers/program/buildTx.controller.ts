@@ -664,7 +664,7 @@ export class BuildTxController extends Controller {
                 ixs,
                 lookupTables,
                 signers
-            } = await user.makeRescueDepositIxs(mint);
+            } = await user.makeRescueDepositIxs(mint, userAddress);
 
             const transaction = await buildTransaction(
                 this.connection,
