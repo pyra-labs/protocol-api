@@ -1,6 +1,6 @@
 import config from "../config/config.js";
 import type { NextFunction, Request, Response } from "express";
-import { bnToDecimal, fetchAndParse, getNativeLstApy, getSlotTimestamp, validateParams } from "../utils/helpers.js";
+import { bnToDecimal, fetchAndParse, getJlpApr, getNativeLstApy, getSlotTimestamp, validateParams } from "../utils/helpers.js";
 import { PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
@@ -119,8 +119,7 @@ export class UserController extends Controller {
                                     return 0;
                                 }
 
-                                // TODO: Get JLP apy
-                                return 0;
+                                return await getJlpApr(this.connection);
                             },
                             3
                         );
