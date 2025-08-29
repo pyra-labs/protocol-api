@@ -21,3 +21,9 @@ export const DUST_BUFFER_BASE_UNITS = 100;
 export const MIN_TIME_LOCK_RENT_PAYER_BALANCE = 0.05 * LAMPORTS_PER_SOL;
 
 export const AVERAGE_SLOT_TIME_MS = 400;
+
+export const LST_MARKET_INDICES = [
+    6, // JitoSOL
+    8 // bSOL
+];
+export const MARKET_INDEX_JLP = 19;

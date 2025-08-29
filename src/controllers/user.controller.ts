@@ -1,6 +1,6 @@
 import config from "../config/config.js";
 import type { NextFunction, Request, Response } from "express";
-import { bnToDecimal, fetchAndParse, getSlotTimestamp, validateParams } from "../utils/helpers.js";
+import { bnToDecimal, fetchAndParse, getNativeLstApy, getSlotTimestamp, validateParams } from "../utils/helpers.js";
 import { PublicKey } from "@solana/web3.js";
 import { HttpException } from "../utils/errors.js";
 import { QuartzClient, type QuartzUser, type BN, MarketIndex, retryWithBackoff } from "@quartz-labs/sdk";
@@ -8,6 +8,7 @@ import { Controller } from "../types/controller.class.js";
 import type { SpendLimitsOrderAccountResponse, SpendLimitsOrderInternalResponse, WithdrawOrderAccountResponse, WithdrawOrderInternalResponse } from "../types/orders.interface.js";
 import AdvancedConnection from "@quartz-labs/connection";
 import { z } from "zod";
+import { LST_MARKET_INDICES, MARKET_INDEX_JLP } from "../config/constants.js";
 
 export class UserController extends Controller {
     private quartzClientPromise: Promise<QuartzClient>;
@@ -96,21 +97,43 @@ export class UserController extends Controller {
                 const promises = uncachedMarketIndices.map(async (index) => {
                     let depositRateBN: BN;
                     let borrowRateBN: BN;
+                    let nativeRate: number;
+
                     try {
-                        depositRateBN = await retryWithBackoff(
+                        const depositRatePromise = retryWithBackoff(
+                            async () => await quartzClient.getDepositRate(index),
+                            3
+                        );
+                        const borrowRatePromise = retryWithBackoff(
+                            async () => await quartzClient.getBorrowRate(index),
+                            3
+                        );
+                        const nativeRatePromise = retryWithBackoff(
                             async () => {
-                                const rate = await quartzClient.getDepositRate(index);
-                                return rate;
+                                if (LST_MARKET_INDICES.includes(index)) {
+                                    return await getNativeLstApy(index);
+                                }
+
+                                // Only non-LST with native yield is JLP
+                                if (index !== MARKET_INDEX_JLP) {
+                                    return 0;
+                                }
+
+                                // TODO: Get JLP apy
+                                return 0;
                             },
                             3
                         );
-                        borrowRateBN = await retryWithBackoff(
-                            async () => {
-                                const rate = await quartzClient.getBorrowRate(index);
-                                return rate;
-                            },
-                            3
-                        );
+
+                        [
+                            depositRateBN,
+                            borrowRateBN,
+                            nativeRate
+                        ] = await Promise.all([
+                            depositRatePromise,
+                            borrowRatePromise,
+                            nativeRatePromise
+                        ]);
                     } catch {
                         throw new HttpException(400, `Could not find rates for spot market index ${index}`);
                     }
@@ -118,8 +141,9 @@ export class UserController extends Controller {
                     const ltv = await quartzClient.getCollateralWeight(index);
 
                     // Update cache
+                    const depositRate = nativeRate + bnToDecimal(depositRateBN, 6);
                     this.rateCache[index] = {
-                        depositRate: bnToDecimal(depositRateBN, 6),
+                        depositRate,
                         borrowRate: bnToDecimal(borrowRateBN, 6),
                         ltv: ltv,
                         timestamp: now
