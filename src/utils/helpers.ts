@@ -12,7 +12,8 @@ import { z } from "zod";
 import { HttpException } from "./errors.js";
 import type { Request } from "express";
 import { SpendLimitTimeframe } from "../types/enums/SpendLimitTimeframe.enum.js";
-import { AVERAGE_SLOT_TIME_MS, LST_MARKET_INDICES } from "../config/constants.js";
+import { AVERAGE_SLOT_TIME_MS, JLP_IDL_URL, JLP_POOL, LST_MARKET_INDICES } from "../config/constants.js";
+import { BorshCoder, type Idl } from "@coral-xyz/anchor";
 
 export const truncToDecimalPlaces = (
     value: number | undefined,
@@ -286,3 +287,28 @@ export async function getNativeLstApy(marketIndex: MarketIndex) {
 
     return truncToDecimalPlaces(response.apys[name], 6);
 }
+
+const fetchJson = async <T>(url: string, init?: RequestInit) =>
+    (await (await fetch(url, init)).json()) as T;  
+
+export async function getJlpApr(connection: Connection) {
+    const idl = await fetchJson<Idl>(JLP_IDL_URL);
+    const coder = new BorshCoder(idl);
+    const info = await connection.getAccountInfo(JLP_POOL);
+    if (!info?.data) throw new Error("Pool account not found");
+    let acc: any;
+    try {
+        acc = coder.accounts.decode("pool", info.data);
+    } catch {
+        acc = coder.accounts.decode("Pool", info.data);
+    }
+    const v = acc?.poolApr?.feeAprBps;
+    if (v == null) throw new Error("feeAprBps missing on Pool account");
+    const bps =
+        typeof v === "number" ? v :
+        typeof v === "bigint" ? Number(v) :
+        typeof v?.toNumber === "function" ? v.toNumber() :
+        Number(v?.toString?.() ?? 0);
+    const percentage = bps / 100;
+    return percentage / 100;
+  }
