@@ -1,5 +1,5 @@
 import config from "../config/config.js";
-import { type MarketIndex, TOKENS, type BN, retryWithBackoff } from "@quartz-labs/sdk";
+import { type MarketIndex, TOKENS, type BN, retryWithBackoff, buildEndpointURL } from "@quartz-labs/sdk";
 import { VersionedTransaction } from "@solana/web3.js";
 import type { Connection } from "@solana/web3.js";
 import type { TransactionInstruction } from "@solana/web3.js";
@@ -12,7 +12,15 @@ import { z } from "zod";
 import { HttpException } from "./errors.js";
 import type { Request } from "express";
 import { SpendLimitTimeframe } from "../types/enums/SpendLimitTimeframe.enum.js";
-import { AVERAGE_SLOT_TIME_MS } from "../config/constants.js";
+import { AVERAGE_SLOT_TIME_MS, LST_MARKET_INDICES } from "../config/constants.js";
+
+export const truncToDecimalPlaces = (
+    value: number | undefined,
+    decimalPlaces: number
+): number => {
+    if (!value) return 0;
+    return Math.trunc(value * 10 ** decimalPlaces) / 10 ** decimalPlaces;
+};
 
 export async function validateParams<T extends z.ZodSchema>(
     schema: T,
@@ -257,4 +265,24 @@ export function getSlotTimestamp(
     const slotDifference = targetSlot - currentSlot;
     const estimatedTimeOffset = slotDifference * AVERAGE_SLOT_TIME_MS;
     return currentTimestamp + estimatedTimeOffset;
+}
+
+export async function getNativeLstApy(marketIndex: MarketIndex) {
+    if (!LST_MARKET_INDICES.includes(marketIndex)) {
+        return 0;
+    }
+
+    const name = TOKENS[marketIndex].name;
+
+    const endpoint = buildEndpointURL("https://extra-api.sanctum.so/v1/apy/latest", {
+        lst: name
+    });
+    const response = await fetchAndParse<{
+        apys: {
+            [key: string]: number;
+        };
+        errs: any;
+    }>(endpoint);
+
+    return truncToDecimalPlaces(response.apys[name], 6);
 }
