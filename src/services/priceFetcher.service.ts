@@ -27,7 +27,6 @@ export class PriceFetcherService {
                 async () => await getPrices(false), // CoinGecko API first, then Pyth
                 3
             );
-            console.log(data);
 
             // Update price cache with new data
             for (const [marketIndex, price] of Object.entries(data)) {
