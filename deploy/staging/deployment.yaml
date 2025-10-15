@@ -18,7 +18,7 @@ spec:
         ingress: public
     spec:
       containers:
-        - image: LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE:TAG
+        - image: LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE:TAG-staging
           name: api
           env:
             - name: GOOGLE_CLOUD_PROJECT
