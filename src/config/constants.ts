@@ -1,5 +1,5 @@
 import { BN } from "@quartz-labs/sdk";
-import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
 export const BASE_UNITS_PER_USDC = 1_000_000;
 export const JUPITER_SLIPPAGE_BPS = 50;
@@ -20,3 +20,12 @@ export const DUST_BUFFER_BASE_UNITS = 100;
 export const MIN_TIME_LOCK_RENT_PAYER_BALANCE = 0.05 * LAMPORTS_PER_SOL;
 
 export const AVERAGE_SLOT_TIME_MS = 400;
+
+export const LST_MARKET_INDICES = [
+    6, // JitoSOL
+    8 // bSOL
+];
+export const MARKET_INDEX_JLP = 19;
+export const JLP_POOL = new PublicKey("5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq");
+export const JLP_IDL_URL =
+  "https://raw.githubusercontent.com/julianfssen/jupiter-perps-anchor-idl-parsing/main/src/idl/jupiter-perpetuals-idl-json.json";

@@ -6,7 +6,6 @@ metadata:
   labels:
     env: prod
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: protocol-api
@@ -16,6 +15,7 @@ spec:
       labels:
         env: prod
         app: protocol-api
+        ingress: public
     spec:
       containers:
         - image: LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE:TAG
@@ -71,6 +71,8 @@ spec:
                 secretKeyRef:
                   name: flash-loan-caller
                   key: key
+            - name: INTERNAL_API_URL
+              value: https://api.pyra.fi/card/
             - name: ROUTE_PREFIX
               value: /v1
           resources:
@@ -93,8 +95,8 @@ metadata:
   name: protocol-api
   namespace: prod
   annotations:
-    cloud.google.com/neg: '{"exposed_ports": {"8080":{}}}'
-    cloud.google.com/backend-config: '{"ports": {"8080": "protocol-api-backend-config"}}'
+    cloud.google.com/neg: '{"ingress": true}'
+    cloud.google.com/backend-config: '{"default":"protocol-api-backend-config"}'
 spec:
   selector:
     app: protocol-api
@@ -104,7 +106,7 @@ spec:
       targetPort: 8080
       name: http
       protocol: TCP
-  type: NodePort
+  type: ClusterIP
 ---
 apiVersion: cloud.google.com/v1
 kind: BackendConfig
@@ -120,3 +122,29 @@ spec:
     timeoutSec: 10
     healthyThreshold: 2
     unhealthyThreshold: 3
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: protocol-api
+  namespace: prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: protocol-api
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
