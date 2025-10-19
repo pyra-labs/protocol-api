@@ -105,13 +105,16 @@ export class TxController extends Controller {
 			skipPreflight: z.boolean().optional().default(false),
 		});
 
-		const { transaction } = await validateParams(paramsSchema, req);
+		const { transaction, skipPreflight } = await validateParams(
+			paramsSchema,
+			req,
+		);
 
 		try {
 			const signature = await retryWithBackoff(
 				async () =>
 					this.connection.sendRawTransaction(transaction, {
-						skipPreflight: true, // TOOD: Remove debug
+						skipPreflight,
 					}),
 				3,
 			);
